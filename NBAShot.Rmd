@@ -53,6 +53,7 @@ nba$FGM <- as.factor(nba$FGM)
 nba$PERIOD <- as.factor(nba$PERIOD)
 nba$player_id <- NULL
 nba$CLOSEST_DEFENDER_PLAYER_ID <- NULL
+nba$SHOT_RESULT <- NULL
 
 # Remove rows that have empty show clock time 
 nba <- nba[complete.cases(nba$SHOT_CLOCK), ]
@@ -156,4 +157,44 @@ binary_ann <- ifelse(ann_prediction > .35, 1, 0)
 confusionMatrix(as.factor(binary_ann), as.factor(nba_test_labels), positive = "1")
 
 ```
+
+# SVM Model
+```{r}
+m1 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "vanilladot")
+m2 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "rbfdot")
+m3 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "polydot")
+m4 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "tanhdot")
+m5 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "laplacedot")
+m6 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "besseldot")
+m7 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "anovadot")
+m8 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "splinedot")
+
+p1 <- predict(m1, nba_svm_test)
+summary(p1)
+p2 <- predict(m2, nba_svm_test)
+summary(p2)
+p3 <- predict(m3, nba_svm_test)
+summary(p3)
+p4 <- predict(m4, nba_svm_test)
+summary(p4)
+p5 <- predict(m5, nba_svm_test)
+summary(p5)
+p6 <- predict(m6, nba_svm_test)
+summary(p6)
+p7 <- predict(m7, nba_svm_test)
+summary(p7)
+p8 <- predict(m8, nba_svm_test)
+summary(p8)
+
+confusionMatrix(as.factor(p1),as.factor(nba_svm_test$FGM))
+confusionMatrix(as.factor(p2),as.factor(nba_svm_test$FGM))
+confusionMatrix(as.factor(p3),as.factor(nba_svm_test$FGM))
+confusionMatrix(as.factor(p4),as.factor(nba_svm_test$FGM))
+confusionMatrix(as.factor(p5),as.factor(nba_svm_test$FGM))
+confusionMatrix(as.factor(p6),as.factor(nba_svm_test$FGM))
+confusionMatrix(as.factor(p7),as.factor(nba_svm_test$FGM))
+confusionMatrix(as.factor(p8),as.factor(nba_svm_test$FGM))
+
+```
+
 
