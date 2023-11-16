@@ -51,6 +51,8 @@ nba$PTS <- NULL
 nba$PTS_TYPE <- as.factor(nba$PTS_TYPE)
 nba$FGM <- as.factor(nba$FGM)
 nba$PERIOD <- as.factor(nba$PERIOD)
+nba$player_id <- NULL
+nba$CLOSEST_DEFENDER_PLAYER_ID <- NULL
 
 # Remove rows that have empty show clock time 
 nba <- nba[complete.cases(nba$SHOT_CLOCK), ]
