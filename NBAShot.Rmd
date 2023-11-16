@@ -19,6 +19,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Dataset
 
+Saavan
+
 We chose the NBA Shooting Data from the 2014-2015 Season that gives information on all attempted shots from the season. The dataset has information regarding the game, the player that made the shot, who they were being guarded by, where they took the shot, how much time was left, and much more. The overall goal is to create an accurate model of whether a shot will be made depending on these factors. This can have significant implications, especially in the realm of sports betting, but also for the teams to better understand trends for their team and the opponents they are playing against. It can also have implications for player contract negotiations and creating a well balanced team of players. Below, you will find the early stages of our discovery of this dataset and a simple logistical regression model. Our next step is to build out more models and also gather more data through webscraping. NBA offers a REST API we can call to get more updated information from the more recent seasons which is something we are considering.
 
 
