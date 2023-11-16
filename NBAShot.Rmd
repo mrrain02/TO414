@@ -47,6 +47,8 @@ summary(nba)
 ```{r}
 nba$GAME_ID <- NULL
 nba$MATCHUP <- NULL
+nba$PTS <- NULL
+nba$PTS_TYPE <- as.factor(nba$PTS_TYPE)
 
 # Remove rows that have empty show clock time 
 nba <- nba[complete.cases(nba$SHOT_CLOCK), ]
