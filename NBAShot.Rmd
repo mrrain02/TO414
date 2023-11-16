@@ -49,13 +49,13 @@ nba$GAME_ID <- NULL
 nba$MATCHUP <- NULL
 nba$PTS <- NULL
 nba$PTS_TYPE <- as.factor(nba$PTS_TYPE)
+nba$FGM <- as.factor(nba$FGM)
+nba$PERIOD <- as.factor(nba$PERIOD)
 
 # Remove rows that have empty show clock time 
 nba <- nba[complete.cases(nba$SHOT_CLOCK), ]
 
 colSums(is.na(nba))
-
-nba$FGM <- as.factor(nba$FGM)
 
 str(nba)
 summary(nba)
