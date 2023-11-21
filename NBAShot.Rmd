@@ -1,5 +1,5 @@
 ---
-title: "Group Project #2"
+title: "Final Project: NBA Shot Analysis"
 author: "R-Hinos"
 date: "2023-12-05"
 output: 
@@ -17,9 +17,14 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Dataset
 
-We chose the NBA Shooting Data from the 2014-2015 Season that gives information on all attempted shots from the season. The dataset has information regarding the game, the player that made the shot, who they were being guarded by, where they took the shot, how much time was left, and much more. The overall goal is to create an accurate model of whether a shot will be made depending on these factors. This can have significant implications, especially in the realm of sports betting, but also for the teams to better understand trends for their team and the opponents they are playing against. It can also have implications for player contract negotiations and creating a well balanced team of players. Below, you will find the early stages of our discovery of this dataset and a simple logistical regression model. Our next step is to build out more models and also gather more data through webscraping. NBA offers a REST API we can call to get more updated information from the more recent seasons which is something we are considering.
+# Dataset Information 
+
+We chose the NBA Shooting Data from the 2022-2023 Season that gives information on all attempted shots from the season. The dataset has information regarding the game, the player that made the shot, who they were being guarded by, where they took the shot, how much time was left, and much more. The overall goal is to create an accurate model of whether a shot will be made depending on these factors. This can have significant implications, especially in the realm of sports betting, but also for the teams to better understand trends for their team and the opponents they are playing against. It can also have implications for player contract negotiations and creating a well balanced team of players. 
+
+# Scraping Data 
+
+We used the `nba_api` to gather the data from the 2022-2023 Season. Through this we were able to gather all shot information from the Regular Season, as well as personal information regarding each player to make our predictions more accurate. You can find the code used to scrape the information here [ADD LINK to GITHUB].
 
 
 # Load Libraries
@@ -38,31 +43,86 @@ library(janitor)
 
 # Read Data
 ```{r}
-nba <- read.csv("shot_logs.csv", stringsAsFactors = TRUE)
-str(nba)
-summary(nba)
+nba <- read.csv("2022_shot_data.csv", stringsAsFactors = TRUE)
+# str(nba)
+# summary(nba)
+# 
+# set.seed(12345)
+# sample_size <- 0.1
+# nba <- nba[sample(1:nrow(nba), sample_size*nrow(nba)), ]
+
 ```
 
 # Clean Data
 ```{r}
+# Remove Unnecessary Columns 
+nba$GRID_TYPE <- NULL
 nba$GAME_ID <- NULL
-nba$MATCHUP <- NULL
-nba$PTS <- NULL
-nba$PTS_TYPE <- as.factor(nba$PTS_TYPE)
-nba$FGM <- as.factor(nba$FGM)
-nba$PERIOD <- as.factor(nba$PERIOD)
-nba$player_id <- NULL
-nba$CLOSEST_DEFENDER_PLAYER_ID <- NULL
-nba$SHOT_RESULT <- NULL
+nba$EVENT_TYPE <- NULL
+nba$GAME_EVENT_ID <- NULL
+nba$PLAYER_ID <- NULL
+nba$TEAM_ID_x <- NULL
+nba$TEAM_ID_y <- NULL
+nba$SHOT_ATTEMPTED_FLAG <- NULL
+nba$GAME_DATE <- NULL
+nba$PLAYER_SLUG <- NULL
+nba$TEAM_SLUG <- NULL
+nba$IS_DEFUNCT <- NULL
+nba$TEAM_CITY <- NULL
+nba$TEAM_NAME_x <- NULL
+nba$TEAM_NAME_y <- NULL
+nba$STATS_TIMEFRAME <- NULL
+nba$DRAFT_YEAR <- NULL
+nba$PLAYER_NAME <- NULL
 
-# Remove rows that have empty show clock time 
-nba <- nba[complete.cases(nba$SHOT_CLOCK), ]
+# nba$COLLEGE <- NULL
+# nba$COUNTRY <- NULL
+
+# Some Players are Undrafted, so Undraft Round and Number Will be Set to "0" to represent that (Make them factors as well)
+nba$DRAFT_ROUND[is.na(nba$DRAFT_ROUND)] <- "un_draft"
+nba$DRAFT_NUMBER[is.na(nba$DRAFT_NUMBER)] <- "un_draft"
+nba$DRAFT_ROUND <- as.factor(nba$DRAFT_ROUND)
+nba$DRAFT_NUMBER <- as.factor(nba$DRAFT_NUMBER)
+
+# PTS, REB, AST have some NA Values. We Replace NA values with the median in each column
+nba$PTS[is.na(nba$PTS)] <- median(nba$PTS, na.rm = TRUE)
+nba$REB[is.na(nba$REB)] <- median(nba$REB, na.rm = TRUE)
+nba$AST[is.na(nba$AST)] <- median(nba$AST, na.rm = TRUE)
+
+
+# Create New Column that Shows Total Number of Years in NBA
+nba$YEARS_NBA <- (nba$TO_YEAR - nba$FROM_YEAR) + 1
+nba$FROM_YEAR <- NULL
+nba$TO_YEAR <- NULL
+
+
+# Change Column Name to FGM 
+colnames(nba)[colnames(nba) == "SHOT_MADE_FLAG"] <- "FGM"
+
+# There are some NA's (less than 90). We are just going to remove these rows
+nba <- na.omit(nba)
 
 colSums(is.na(nba))
 
-str(nba)
-summary(nba)
 ```
+
+```{r}
+nba <- read.csv("2022_shot_data.csv", stringsAsFactors = TRUE)
+
+# Combine first_name and last_name into a new column 'full_name'
+nba$full_name <- paste(nba$PLAYER_FIRST_NAME, nba$PLAYER_LAST_NAME, sep = " ")
+
+# Extract unique player names and corresponding player IDs
+unique_players <- unique(nba[, c("full_name", "PLAYER_ID")])
+
+# Write the result to a new CSV file
+write.csv(unique_players, "2022_player_info.csv", row.names = FALSE)
+write.csv(nba, "2022_shot_data_new.csv", row.names = FALSE)
+
+```
+
+```
+
 
 # Pre Process Data
 # Pre-Processing Data
@@ -82,7 +142,6 @@ normalize <- function(x) {
 
 # We are going to normalize everything for KNN and ANN
 nba_norm <- as.data.frame(lapply(nbamm, normalize))
-
 ```
 
 
@@ -121,13 +180,14 @@ nba_test_labels <- nba_norm[-train_set, "FGM"]
 # Logistical Regression 
 ```{r}
 
-NbaModel=glm(FGM ~ DRIBBLES + TOUCH_TIME + SHOT_DIST + CLOSE_DEF_DIST + SHOT_CLOCK,data=nba_log_train,family="binomial")
+
+NbaModel=glm(FGM ~., data=nba_log_train,family="binomial")
 
 # Use the logistic regression model 'NbaModel' to generate predictions on the test dataset
 
 testpred1 <- predict(NbaModel, nba_log_test, type = "response")
 # Convert the predicted probabilities into binary outcomes: 1 if probability >= 0.38, otherwise 0
-binpred1 <- ifelse(testpred1 >= .38, 1, 0)
+binpred1 <- ifelse(testpred1 >=.5, 1, 0)
 # Generate a confusion matrix to evaluate the performance of t-he predictions against the actual test labels
 
 
