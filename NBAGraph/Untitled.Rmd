@@ -1,0 +1,37 @@
+---
+title: "ShootingGraph"
+author: "Saavan Kaneria"
+date: "2023-11-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+import nbashots as nba # this will throw a warning if using matplotlib 1.5
+
+%matplotlib inline
+```
+
+
+```{r}
+nba <- read.csv("2022_shot_data_new.csv", stringsAsFactors = TRUE)
+```
+
+```{r}
+
+plt.rcParams['figure.figsize'] = (12, 11)
+
+nba.shot_chart(curry_shots_df.LOC_X, curry_shots_df.LOC_Y,
+              title="Stephen Curry FGA 2015-16 Season")
+
+plt.show()
+
+```
+
+
