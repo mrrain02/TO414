@@ -74,6 +74,9 @@ nba$TEAM_NAME_y <- NULL
 nba$STATS_TIMEFRAME <- NULL
 nba$DRAFT_YEAR <- NULL
 nba$PLAYER_NAME <- NULL
+nba$PLAYER_LAST_NAME <- NULL
+nba$PLAYER_FIRST_NAME <- NULL
+
 
 # nba$COLLEGE <- NULL
 # nba$COUNTRY <- NULL
@@ -97,32 +100,16 @@ nba$TO_YEAR <- NULL
 
 
 # Change Column Name to FGM 
-colnames(nba)[colnames(nba) == "SHOT_MADE_FLAG"] <- "FGM"
+# colnames(nba)[colnames(nba) == "SHOT_MADE_FLAG"] <- "FGM"
 
 # There are some NA's (less than 90). We are just going to remove these rows
 nba <- na.omit(nba)
 
 colSums(is.na(nba))
 
+str(nba)
+summary(nba)
 ```
-
-```{r}
-nba <- read.csv("2022_shot_data.csv", stringsAsFactors = TRUE)
-
-# Combine first_name and last_name into a new column 'full_name'
-nba$full_name <- paste(nba$PLAYER_FIRST_NAME, nba$PLAYER_LAST_NAME, sep = " ")
-
-# Extract unique player names and corresponding player IDs
-unique_players <- unique(nba[, c("full_name", "PLAYER_ID")])
-
-# Write the result to a new CSV file
-write.csv(unique_players, "2022_player_info.csv", row.names = FALSE)
-write.csv(nba, "2022_shot_data_new.csv", row.names = FALSE)
-
-```
-
-```
-
 
 # Pre Process Data
 # Pre-Processing Data
@@ -166,13 +153,12 @@ nba_svm_test <- nbamm[-train_set, ]
 
 #Create a train set and test set with separate x and y cols
 #First the predictors - all columns except the yyes column
-nba_train <- nba_norm[train_set, -match("FGM",names(nba_norm))]
-nba_test <- nba_norm[-train_set, -match("FGM",names(nba_norm))]
+nba_train <- nba_norm[train_set, -match("SHOT_MADE_FLAG",names(nba_norm))]
+nba_test <- nba_norm[-train_set, -match("SHOT_MADE_FLAG",names(nba_norm))]
 
 #Now the response (aka Labels) - only the yyes column
-nba_train_labels <- nba_norm[train_set, "FGM"]
-nba_test_labels <- nba_norm[-train_set, "FGM"]
-
+nba_train_labels <- nba_norm[train_set, "SHOT_MADE_FLAG"]
+nba_test_labels <- nba_norm[-train_set, "SHOT_MADE_FLAG"]
 
 ```
 
@@ -181,7 +167,7 @@ nba_test_labels <- nba_norm[-train_set, "FGM"]
 ```{r}
 
 
-NbaModel=glm(FGM ~., data=nba_log_train,family="binomial")
+NbaModel=glm(SHOT_MADE_FLAG ~., data=nba_log_train,family="binomial")
 
 # Use the logistic regression model 'NbaModel' to generate predictions on the test dataset
 
@@ -190,14 +176,13 @@ testpred1 <- predict(NbaModel, nba_log_test, type = "response")
 binpred1 <- ifelse(testpred1 >=.5, 1, 0)
 # Generate a confusion matrix to evaluate the performance of t-he predictions against the actual test labels
 
-
-confusionMatrix(as.factor(binpred1), as.factor(nba_log_test$FGM), positive = "1")
+confusionMatrix(as.factor(binpred1), as.factor(nba_log_test$SHOT_MADE_FLAG), positive = "1")
 
 ```
 
 # ANN Model
 ```{r}
-ann_model <- neuralnet(FGM ~., data=nba_ann_train, hidden = 3)
+ann_model <- neuralnet(SHOT_MADE_FLAG ~., data=nba_ann_train, hidden = 3)
 
 # (Comment) Save the model to a file
 saveRDS(ann_model, "ann_model_3.rds")
