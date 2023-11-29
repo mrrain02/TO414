@@ -83,6 +83,12 @@ nba$ROSTER_STATUS <- NULL
 nba$COLLEGE <- NULL
 nba$COUNTRY <- NULL
 
+# Take Top 3 Countries, Factorize Everything Else
+
+# Take Top 3 Colleges, Factorize Everything Else
+
+# Take Top 5 Heights, Factorize Everything Else 
+
 # Some Players are Undrafted, so Undraft Round and Number Will be Set to "0" to represent that (Make them factors as well)
 nba$DRAFT_ROUND[is.na(nba$DRAFT_ROUND)] <- "un_draft"
 nba$DRAFT_NUMBER[is.na(nba$DRAFT_NUMBER)] <- "un_draft"
@@ -120,6 +126,8 @@ summary(nba)
 
 nbamm <- as.data.frame(model.matrix(~.-1,nba))
 nbamm <- clean_names(nbamm)
+nbamm$action_type <- NULL
+nbamm$height5_8 <- NULL
 str(nbamm)
 
 
@@ -130,6 +138,7 @@ normalize <- function(x) {
 
 # We are going to normalize everything for KNN and ANN
 nba_norm <- as.data.frame(lapply(nbamm, normalize))
+summary(nba_norm)
 ```
 
 
@@ -213,6 +222,11 @@ colSums(is.na(nba_train))
 colSums(is.na(nba_test))
 
 any(is.na(nba_train_labels))
+str(nba_test)
+
+str(nba_train[,141:145])
+
+
 knnpred <- knn(nba_train, nba_test, nba_train_labels, k = 5, prob=FALSE)
 
 # (Comment) Save the model to a file
