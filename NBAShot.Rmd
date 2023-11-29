@@ -44,8 +44,8 @@ library(janitor)
 # Read Data
 ```{r}
 nba <- read.csv("2022_shot_data.csv", stringsAsFactors = TRUE)
-# str(nba)
-# summary(nba)
+str(nba)
+summary(nba)
 # 
 set.seed(12345)
 sample_size <- 0.1
@@ -58,28 +58,30 @@ nba <- nba[sample(1:nrow(nba), sample_size*nrow(nba)), ]
 # Remove Unnecessary Columns 
 nba$GRID_TYPE <- NULL
 nba$GAME_ID <- NULL
-nba$EVENT_TYPE <- NULL
 nba$GAME_EVENT_ID <- NULL
 nba$PLAYER_ID <- NULL
+nba$PLAYER_NAME <- NULL
 nba$TEAM_ID_x <- NULL
-nba$TEAM_ID_y <- NULL
+nba$EVENT_TYPE <- NULL
 nba$SHOT_ATTEMPTED_FLAG <- NULL
 nba$GAME_DATE <- NULL
+nba$PLAYER_LAST_NAME <- NULL
+nba$PLAYER_FIRST_NAME <- NULL
 nba$PLAYER_SLUG <- NULL
+nba$TEAM_ID_y <- NULL
 nba$TEAM_SLUG <- NULL
 nba$IS_DEFUNCT <- NULL
 nba$TEAM_CITY <- NULL
 nba$TEAM_NAME_x <- NULL
 nba$TEAM_NAME_y <- NULL
-nba$STATS_TIMEFRAME <- NULL
+nba$TEAM_ABBREVIATION <- NULL
 nba$DRAFT_YEAR <- NULL
-nba$PLAYER_NAME <- NULL
-nba$PLAYER_LAST_NAME <- NULL
-nba$PLAYER_FIRST_NAME <- NULL
+nba$STATS_TIMEFRAME <- NULL
+nba$ROSTER_STATUS <- NULL
 
-
-# nba$COLLEGE <- NULL
-# nba$COUNTRY <- NULL
+# When Train and Split is Seperated, some colleges will not appear so have to remove
+nba$COLLEGE <- NULL
+nba$COUNTRY <- NULL
 
 # Some Players are Undrafted, so Undraft Round and Number Will be Set to "0" to represent that (Make them factors as well)
 nba$DRAFT_ROUND[is.na(nba$DRAFT_ROUND)] <- "un_draft"
@@ -98,9 +100,7 @@ nba$YEARS_NBA <- (nba$TO_YEAR - nba$FROM_YEAR) + 1
 nba$FROM_YEAR <- NULL
 nba$TO_YEAR <- NULL
 
-
-# Change Column Name to FGM 
-# colnames(nba)[colnames(nba) == "SHOT_MADE_FLAG"] <- "FGM"
+nba$SHOT_MADE_FLAG <- as.factor(nba$SHOT_MADE_FLAG)
 
 # There are some NA's (less than 90). We are just going to remove these rows
 nba <- na.omit(nba)
@@ -109,6 +109,7 @@ colSums(is.na(nba))
 
 str(nba)
 summary(nba)
+
 ```
 
 # Pre Process Data
@@ -153,19 +154,18 @@ nba_svm_test <- nbamm[-train_set, ]
 
 #Create a train set and test set with separate x and y cols
 #First the predictors - all columns except the yyes column
-nba_train <- nba_norm[train_set, -match("SHOT_MADE_FLAG",names(nba_norm))]
-nba_test <- nba_norm[-train_set, -match("SHOT_MADE_FLAG",names(nba_norm))]
+nba_train <- nba_norm[train_set, -match("shot_made_flag1",names(nba_norm))]
+nba_test <- nba_norm[-train_set, -match("shot_made_flag1",names(nba_norm))]
 
 #Now the response (aka Labels) - only the yyes column
-nba_train_labels <- nba_norm[train_set, "SHOT_MADE_FLAG"]
-nba_test_labels <- nba_norm[-train_set, "SHOT_MADE_FLAG"]
+nba_train_labels <- nba_norm[train_set, "shot_made_flag1"]
+nba_test_labels <- nba_norm[-train_set, "shot_made_flag1"]
 
 ```
 
 
 # Logistical Regression 
 ```{r}
-
 
 NbaModel=glm(SHOT_MADE_FLAG ~., data=nba_log_train,family="binomial")
 
@@ -182,7 +182,8 @@ confusionMatrix(as.factor(binpred1), as.factor(nba_log_test$SHOT_MADE_FLAG), pos
 
 # ANN Model
 ```{r}
-ann_model <- neuralnet(SHOT_MADE_FLAG ~., data=nba_ann_train, hidden = 3)
+
+ann_model <- neuralnet(shot_made_flag1 ~., data=nba_ann_train, hidden = 3)
 
 # (Comment) Save the model to a file
 saveRDS(ann_model, "ann_model_3.rds")
@@ -203,16 +204,57 @@ confusionMatrix(as.factor(binary_ann), as.factor(nba_test_labels), positive = "1
 
 ```
 
+# KNN Model 
+```{r}
+set.seed(12345)
+any(is.na(nba_train))
+any(is.na(nba_test))
+colSums(is.na(nba_train))
+colSums(is.na(nba_test))
+
+any(is.na(nba_train_labels))
+knnpred <- knn(nba_train, nba_test, nba_train_labels, k = 5, prob=FALSE)
+
+# (Comment) Save the model to a file
+saveRDS(knnpred, "knn_model_5.rds")
+# Load the model
+knn_model <- readRDS("knn_model_5.rds")
+
+# Generate a confusion matrix using the 'caret' library to evaluate the performance of the KNN predictions ('knnpred') against the actual test labels ('tele_test_labels'). The 'positive' argument specifies that the positive class label is "1".
+confusionMatrix(as.factor(knn_model), as.factor(nba_test_labels), positive="1")
+```
+
+
+
+# Decision Tree
+```{r}
+# No optimization for Decision Tree since we have no learned that yet
+
+nba_model <- C5.0(as.factor(SHOT_MADE_FLAG) ~ ., data = nba_log_train)
+
+# (Comment) Save the model to a file
+saveRDS(nba_model, "tree_model.rds")
+# Load the model
+tree_model <- readRDS("tree_model.rds")
+
+nba_predict <- predict(tree_model, nba_log_test)
+
+confusionMatrix(as.factor(nba_predict), as.factor(nba_log_test$SHOT_MADE_FLAG), positive = "1")
+# plot(hotel_model)
+
+```
+
+
 # SVM Model
 ```{r}
-m1 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "vanilladot")
-m2 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "rbfdot")
-m3 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "polydot")
-m4 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "tanhdot")
-m5 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "laplacedot")
-m6 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "besseldot")
-m7 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "anovadot")
-m8 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "splinedot")
+m1 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "vanilladot")
+m2 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "rbfdot")
+m3 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "polydot")
+m4 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "tanhdot")
+m5 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "laplacedot")
+m6 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "besseldot")
+m7 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "anovadot")
+m8 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "splinedot")
 
 p1 <- predict(m1, nba_svm_test)
 summary(p1)
