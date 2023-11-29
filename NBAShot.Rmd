@@ -46,6 +46,11 @@ library(janitor)
 nba <- read.csv("2022_shot_data.csv", stringsAsFactors = TRUE)
 str(nba)
 summary(nba)
+
+# Randomize the rows so all player shots are not the same
+set.seed(12345)
+nba <- nba[sample(nrow(nba)),]
+
 # 
 set.seed(12345)
 sample_size <- 0.1
@@ -76,24 +81,31 @@ nba$TEAM_NAME_x <- NULL
 nba$TEAM_NAME_y <- NULL
 nba$TEAM_ABBREVIATION <- NULL
 nba$DRAFT_YEAR <- NULL
+nba$DRAFT_NUMBER <- NULL
 nba$STATS_TIMEFRAME <- NULL
 nba$ROSTER_STATUS <- NULL
 
-# When Train and Split is Seperated, some colleges will not appear so have to remove
-nba$COLLEGE <- NULL
-nba$COUNTRY <- NULL
+
+# Take Top 5 Colleges, Factorize Everything Else
+nba$COLLEGE <- as.character(nba$COLLEGE)
+nba$COLLEGE <- ifelse(!(nba$COLLEGE == "Kentucky" | nba$COLLEGE == "Duke" | nba$COLLEGE == "UCLA" |
+nba$COLLEGE == "Arizona" | nba$COLLEGE == "Michigan"), "Other", nba$COLLEGE)
+nba$COLLEGE <- as.factor(nba$COLLEGE)
 
 # Take Top 3 Countries, Factorize Everything Else
-
-# Take Top 3 Colleges, Factorize Everything Else
+nba$COUNTRY <- as.character(nba$COUNTRY)
+nba$COUNTRY <- ifelse(!(nba$COUNTRY == "USA" | nba$COUNTRY == "Canada" | nba$COUNTRY == "Australia"), "Other", nba$COLLEGE)
+nba$COUNTRY <- as.factor(nba$COUNTRY)
 
 # Take Top 5 Heights, Factorize Everything Else 
+nba$HEIGHT <- as.character(nba$HEIGHT)
+nba$HEIGHT <- ifelse(!(nba$HEIGHT == "6-5" | nba$HEIGHT == "6-4" | nba$HEIGHT == "6-8" |
+nba$HEIGHT == "6-6" | nba$HEIGHT == "6-7"), "Other", nba$HEIGHT)
+nba$HEIGHT <- as.factor(nba$HEIGHT)
 
 # Some Players are Undrafted, so Undraft Round and Number Will be Set to "0" to represent that (Make them factors as well)
 nba$DRAFT_ROUND[is.na(nba$DRAFT_ROUND)] <- "un_draft"
-nba$DRAFT_NUMBER[is.na(nba$DRAFT_NUMBER)] <- "un_draft"
 nba$DRAFT_ROUND <- as.factor(nba$DRAFT_ROUND)
-nba$DRAFT_NUMBER <- as.factor(nba$DRAFT_NUMBER)
 
 # PTS, REB, AST have some NA Values. We Replace NA values with the median in each column
 nba$PTS[is.na(nba$PTS)] <- median(nba$PTS, na.rm = TRUE)
@@ -216,17 +228,6 @@ confusionMatrix(as.factor(binary_ann), as.factor(nba_test_labels), positive = "1
 # KNN Model 
 ```{r}
 set.seed(12345)
-any(is.na(nba_train))
-any(is.na(nba_test))
-colSums(is.na(nba_train))
-colSums(is.na(nba_test))
-
-any(is.na(nba_train_labels))
-str(nba_test)
-
-str(nba_train[,141:145])
-
-
 knnpred <- knn(nba_train, nba_test, nba_train_labels, k = 5, prob=FALSE)
 
 # (Comment) Save the model to a file
