@@ -47,9 +47,9 @@ nba <- read.csv("2022_shot_data.csv", stringsAsFactors = TRUE)
 # str(nba)
 # summary(nba)
 # 
-# set.seed(12345)
-# sample_size <- 0.1
-# nba <- nba[sample(1:nrow(nba), sample_size*nrow(nba)), ]
+set.seed(12345)
+sample_size <- 0.1
+nba <- nba[sample(1:nrow(nba), sample_size*nrow(nba)), ]
 
 ```
 
