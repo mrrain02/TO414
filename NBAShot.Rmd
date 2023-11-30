@@ -204,13 +204,13 @@ confusionMatrix(as.factor(binpred1), as.factor(nba_log_test$SHOT_MADE_FLAG), pos
 # ANN Model
 ```{r}
 
-ann_model <- neuralnet(shot_made_flag1 ~., data=nba_ann_train, hidden = 3)
+ann_model <- neuralnet(shot_made_flag1 ~., data=nba_ann_train, hidden = 1)
 
 # (Comment) Save the model to a file
-saveRDS(ann_model, "ann_model_3.rds")
+saveRDS(ann_model, "ann_model_1.rds")
 
 # Load the model
-ann_model <- readRDS("ann_model_3.rds")
+ann_model <- readRDS("ann_model_1.rds")
 
 ann_prediction <- predict(ann_model, nba_ann_test)
 
@@ -244,8 +244,10 @@ confusionMatrix(as.factor(knn_model), as.factor(nba_test_labels), positive="1")
 # Decision Tree
 ```{r}
 # No optimization for Decision Tree since we have no learned that yet
+install.packages("C50", dependencies = TRUE)
 
-nba_model <- C5.0(as.factor(SHOT_MADE_FLAG) ~ ., data = nba_log_train)
+nba_model <- C5.0(SHOT_MADE_FLAG ~ ., data = nba_log_train)
+plot(nba_model)
 
 # (Comment) Save the model to a file
 saveRDS(nba_model, "tree_model.rds")
