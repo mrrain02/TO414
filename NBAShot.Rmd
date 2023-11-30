@@ -24,7 +24,7 @@ We chose the NBA Shooting Data from the 2022-2023 Season that gives information 
 
 # Scraping Data 
 
-We used the `nba_api` to gather the data from the 2022-2023 Season. Through this we were able to gather all shot information from the Regular Season, as well as personal information regarding each player to make our predictions more accurate. You can find the code used to scrape the information here [ADD LINK to GITHUB].
+We used the `nba_api` to gather the data from the 2022-2023 Season. Through this we were able to gather all shot information from the Regular Season, as well as personal information regarding each player to make our predictions more accurate. You can find the code used to scrape the information here `https://github.com/mrrain02/TO414.git`
 
 
 # Load Libraries
@@ -38,6 +38,7 @@ library(C50)
 library(tidyr)
 library(dplyr)
 library(janitor)
+library(randomForest)
 ```
 
 
@@ -51,7 +52,7 @@ summary(nba)
 set.seed(12345)
 nba <- nba[sample(nrow(nba)),]
 
-# 
+# Since there are over 200,000 Data points, need to take smaller randomized selection 
 set.seed(12345)
 sample_size <- 0.1
 nba <- nba[sample(1:nrow(nba), sample_size*nrow(nba)), ]
@@ -85,7 +86,6 @@ nba$DRAFT_NUMBER <- NULL
 nba$STATS_TIMEFRAME <- NULL
 nba$ROSTER_STATUS <- NULL
 
-
 # Take Top 5 Colleges, Factorize Everything Else
 nba$COLLEGE <- as.character(nba$COLLEGE)
 nba$COLLEGE <- ifelse(!(nba$COLLEGE == "Kentucky" | nba$COLLEGE == "Duke" | nba$COLLEGE == "UCLA" |
@@ -102,8 +102,6 @@ nba$HEIGHT <- as.character(nba$HEIGHT)
 nba$HEIGHT <- ifelse(!(nba$HEIGHT == "6-5" | nba$HEIGHT == "6-4" | nba$HEIGHT == "6-8" |
 nba$HEIGHT == "6-6" | nba$HEIGHT == "6-7"), "Other", nba$HEIGHT)
 nba$HEIGHT <- as.factor(nba$HEIGHT)
-
-
 
 
 # Action Type 
@@ -134,6 +132,13 @@ nba <- na.omit(nba)
 
 colSums(is.na(nba))
 
+# Some Factor Levels have "" from the Empty Strings in the Original Dataset. Need to remove these
+nba$SHOT_TYPE <- droplevels(nba$SHOT_TYPE, exclude = "")
+nba$SHOT_ZONE_BASIC <- droplevels(nba$SHOT_ZONE_BASIC, exclude = "")
+nba$SHOT_ZONE_AREA <- droplevels(nba$SHOT_ZONE_AREA, exclude = "")
+nba$SHOT_ZONE_RANGE <- droplevels(nba$SHOT_ZONE_RANGE, exclude = "")
+nba$HTM <- droplevels(nba$HTM, exclude = "")
+nba$VTM <- droplevels(nba$VTM, exclude = "")
 str(nba)
 summary(nba)
 
@@ -210,8 +215,7 @@ confusionMatrix(as.factor(binpred1), as.factor(nba_log_test$SHOT_MADE_FLAG), pos
 
 # ANN Model
 ```{r}
-
-ann_model <- neuralnet(shot_made_flag1 ~., data=nba_ann_train, hidden = 1)
+ann_model <- neuralnet(shot_made_flag1 ~., data=nba_ann_train, hidden = 5, act.fct = "tanh")
 
 # (Comment) Save the model to a file
 saveRDS(ann_model, "ann_model_1.rds")
@@ -251,6 +255,9 @@ confusionMatrix(as.factor(knn_model), as.factor(nba_test_labels), positive="1")
 # Decision Tree
 ```{r}
 # No optimization for Decision Tree since we have no learned that yet
+str(nba_log_train) 
+summary(nba_log_train)
+
 nba_model <- C5.0(SHOT_MADE_FLAG ~ ., data = nba_log_train)
 plot(nba_model)
 
@@ -265,52 +272,76 @@ confusionMatrix(as.factor(nba_predict), as.factor(nba_log_test$SHOT_MADE_FLAG), 
 # plot(hotel_model)
 
 ```
-
-
-# SVM Model
+# Random Forest
 ```{r}
-m1 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "vanilladot")
-m2 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "rbfdot")
-m3 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "polydot")
-m4 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "tanhdot")
-m5 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "laplacedot")
-m6 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "besseldot")
-m7 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "anovadot")
-m8 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "splinedot")
+library(randomForest)
+set.seed(12345)
+rf_model <- randomForest(x = nba_train, y = as.factor(nba_train_labels), ntree = 500)
+rf_predictions <- predict(rf_model, nba_test)
+confusionMatrix(as.factor(rf_predictions), as.factor(nba_test_labels), positive = "1")
+```
 
-p1 <- predict(m1, nba_svm_test)
+
+
+# SVM Models 
+## RBF Model 
+```{r}
+m1 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "rbfdot")
+
+saveRDS(m1, "svm_rbf_model.rds")
+# Load the model
+svm_rbf_model <- readRDS("svm_rbf_model.rds")
+
+# predict the values for rbfdot
+p1 <- predict(svm_rbf_model, nba_svm_test)
 summary(p1)
-p2 <- predict(m2, nba_svm_test)
-summary(p2)
-p2 <- ifelse(p2 < 0.5, 0 , 1)
 
-p3 <- predict(m3, nba_svm_test)
-summary(p3)
-p4 <- predict(m4, nba_svm_test)
-summary(p4)
-p5 <- predict(m5, nba_svm_test)
-summary(p5)
-p6 <- predict(m6, nba_svm_test)
-summary(p6)
-p7 <- predict(m7, nba_svm_test)
-summary(p7)
-p8 <- predict(m8, nba_svm_test)
-summary(p8)
-
-levels(as.factor(p2))
-levels(as.factor(nba_svm_test$shot_made_flag1))
+p1 <- ifelse(p1 >= 0.5, 1 , 0)
 
 
 confusionMatrix(as.factor(p1),as.factor(nba_svm_test$shot_made_flag1))
+```
+
+
+## Poly Dot 
+```{r}
+m2 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "rbfdot")
+
+saveRDS(m2, "svm_poly_model.rds")
+# Load the model
+svm_poly_model <- readRDS("svm_poly_model.rds")
+
+# predict the values for rbfdot
+p2 <- predict(svm_poly_model, nba_svm_test)
+summary(p2)
+
+p2 <- ifelse(p2 >= 0.5, 1 , 0)
+
+
 confusionMatrix(as.factor(p2),as.factor(nba_svm_test$shot_made_flag1))
-confusionMatrix(as.factor(p3),as.factor(nba_svm_test$shot_made_flag1))
-confusionMatrix(as.factor(p4),as.factor(nba_svm_test$shot_made_flag1))
-confusionMatrix(as.factor(p5),as.factor(nba_svm_test$shot_made_flag1))
-confusionMatrix(as.factor(p6),as.factor(nba_svm_test$shot_made_flag1))
-confusionMatrix(as.factor(p7),as.factor(nba_svm_test$shot_made_flag1))
-confusionMatrix(as.factor(p8),as.factor(nba_svm_test$shot_made_flag1))
 
 ```
+
+
+## laplacedot
+```{r}
+m3 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "laplacedot")
+
+saveRDS(m3, "svm_ldot_model.rds")
+# Load the model
+svm_poly_model <- readRDS("svm_ldot_model.rds")
+
+# predict the values for rbfdot
+p3 <- predict(svm_poly_model, nba_svm_test)
+summary(p3)
+
+p3 <- ifelse(p3 >= 0.5, 1 , 0)
+
+
+confusionMatrix(as.factor(p3),as.factor(nba_svm_test$shot_made_flag1))
+
+```
+
 
 ```{r}
 # 2-Step Decision Tree
