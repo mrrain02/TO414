@@ -202,39 +202,46 @@ nba_test_labels <- nba_norm[-train_set, "shot_made_flag1"]
 
 NbaModel=glm(SHOT_MADE_FLAG ~., data=nba_log_train,family="binomial")
 
+
+Nba_StepBase = glm(SHOT_MADE_FLAG ~ PERIOD + SECONDS_REMAINING + ACTION_TYPE + SHOT_TYPE + 
+    SHOT_ZONE_BASIC + SHOT_ZONE_RANGE + HTM + WEIGHT + DRAFT_ROUND + 
+    YEARS_NBA + log1p(SHOT_DISTANCE) + sqrt(PTS) + sqrt(REB) + 
+    sqrt(YEARS_NBA) + SHOT_TYPE:SHOT_ZONE_BASIC, data=nba_log_train,family="binomial")
+
 # Use the logistic regression model 'NbaModel' to generate predictions on the test dataset
 
-testpred1 <- predict(NbaModel, nba_log_test, type = "response")
+testpred1 <- predict(Nba_StepBase, nba_log_test, type = "response")
 # Convert the predicted probabilities into binary outcomes: 1 if probability >= 0.38, otherwise 0
-binpred1 <- ifelse(testpred1 >=.5, 1, 0)
+binpred1 <- ifelse(testpred1 >=.50, 1, 0)
 # Generate a confusion matrix to evaluate the performance of t-he predictions against the actual test labels
 
 confusionMatrix(as.factor(binpred1), as.factor(nba_log_test$SHOT_MADE_FLAG), positive = "1")
 
 ```
 
-# ANN Model
+# Boosting (Replace ANN Model)
 ```{r}
-ann_model <- neuralnet(shot_made_flag1 ~., data=nba_ann_train, hidden = 5, act.fct = "tanh")
+library(gbm)
+boost <- gbm(shot_made_flag1 ~ ., data = nba_ann_train,
+             distribution = "gaussian",
+             n.trees = 1000, shrinkage = 0.01,
+             interaction.depth = 4,
+             bag.fraction = 0.7,
+             n.minobsinnode = 5)
 
-# (Comment) Save the model to a file
-saveRDS(ann_model, "ann_model_1.rds")
-
-# Load the model
-ann_model <- readRDS("ann_model_1.rds")
-
-ann_prediction <- predict(ann_model, nba_ann_test)
+boost_prediction <- predict(boost, nba_ann_test)
 
 # Display a summary of the ANN model's predictions
-summary(ann_prediction)
+summary(boost_prediction)
 
 # Convert the predicted probabilities from the ANN model into binary outcomes: 1 if probability > 0.35, otherwise 0
-binary_ann <- ifelse(ann_prediction > .35, 1, 0)
+binary_ann <- ifelse(boost_prediction > .5, 1, 0)
 
 # Generate a confusion matrix to evaluate the performance of the binary predictions against the actual test labels
 confusionMatrix(as.factor(binary_ann), as.factor(nba_test_labels), positive = "1")
 
 ```
+
 
 # KNN Model 
 ```{r}
@@ -353,10 +360,11 @@ confusionMatrix(as.factor(p3),as.factor(nba_svm_test$shot_made_flag1))
 nba_preds <- data.frame(
   log = testpred1,
   knn = as.numeric(knn_model),
-  ann = ann_prediction,
+  rf = rf_predictions,
+  boost = boost_prediction,
   smv = p1,
   decision = nba_predict,
-  true = nba_ann_test$is_canceled)
+  true = nba_ann_test$shot_made_flag1)
 
 head(nba_preds)
 summary(nba_preds)
@@ -376,11 +384,9 @@ tree_rows <- sample(1:nrow(nba_preds), 0.7*nrow(nba_preds))
 tree_test <- nba_preds[-tree_rows, ]
 tree_train <- nba_preds[tree_rows, ]
 
-error_cost <- matrix(c(0,1,4,0), nrow = 2)
-error_cost
 
 # Create a new Decision Tree with the predictions of the other models 
-tree_model <- C5.0(as.factor(true) ~ ., data = tree_train, costs = error_cost)
+tree_model <- C5.0(as.factor(true) ~ ., data = tree_train)
 
 tree_predict <- predict(tree_model, tree_test)
 
