@@ -12,20 +12,27 @@ ui <- fluidPage(
     sidebarPanel(
       selectInput("player_name", "Select Player:", 
                   choices = c("All", sort(unique(shot_data$PLAYER_NAME))),
-                  selected = sort(unique(shot_data$PLAYER_NAME))[3]),  # Default to the first player in the list
+                  selected = sort(unique(shot_data$PLAYER_NAME))[3]),
       selectInput("action_type", "Action Type:", 
                   choices = c("All", unique(shot_data$ACTION_TYPE)), 
-                  selected = unique(shot_data$ACTION_TYPE)[1]),  # Default to the first action type in the list
+                  selected = unique(shot_data$ACTION_TYPE)[1]),
       selectInput("period", "Game Period:", 
                   choices = c("All", sort(unique(shot_data$PERIOD), decreasing = FALSE)), 
-                  selected = "1"),  # Default to the first period (assuming it's labeled as "1")
-      sliderInput("distance", "Shot Distance:", min = 0, max = 50, value = c(0, 50)),
+                  selected = "1"),
+      sliderInput("filter_distance", "Filter by Shot Distance:", min = 0, max = 50, value = c(0, 50)),
+      sliderInput("pred_distance", "Prediction: Shot Distance", min = 0, max = 50, value = 25),
       sliderInput("loc_x", "Select X Coordinate:", min = -250, max = 250, value = 0),
       sliderInput("loc_y", "Select Y Coordinate:", min = -50, max = 500, value = 0),
+      sliderInput("minutes_remaining", "Minutes Remaining", min = 0, max = 12, value = 12),
+      sliderInput("seconds_remaining", "Seconds Remaining", min = 0, max = 60, value = 60),
+      actionButton("predict", "Predict"),
       textOutput("accuracy_info")
     ),
     mainPanel(
-      plotOutput("shot_chart")
+      plotOutput("shot_chart"),
+      actionButton("predict", "Predict"),
+      textOutput("predictionOutput"),  # Add this line to display the prediction
+      textOutput("test_prediction_output")
     )
   )
 )
@@ -35,6 +42,50 @@ server <- function(input, output, session) {
   
   # Initialize action type with 'All'
   updateSelectInput(session, "action_type", choices = c("All", unique(shot_data$ACTION_TYPE)), selected = "All")
+  
+  # Load the logistic regression model
+  model <- readRDS("/Users/devinhost/Dropbox (Personal)/My Mac (Devin’s MacBook Pro)/Desktop/TO414 RStudio/TOProj/NbaModel_2.rds")
+  print(model)
+  
+  observeEvent(input$predict, {
+    print("Predict button clicked") # Debugging
+    
+    # Prepare user input for prediction
+    user_input <- data.frame(
+      SHOT_DISTANCE = input$pred_distance,
+      LOC_X = input$loc_x,
+      LOC_Y = input$loc_y
+    )
+    
+    print(user_input) # Debugging
+    
+    # Apply log1p transformation to SHOT_DISTANCE
+    user_input$SHOT_DISTANCE <- log1p(user_input$SHOT_DISTANCE)
+    
+    # Make prediction
+    prediction_prob <- predict(model, newdata = user_input, type = "response")
+    prediction_prob <- prediction_prob - 0.2
+    print(prediction_prob) # Debugging
+    
+    prediction_result <- ifelse(prediction_prob > 0.6, "Likely to Make", "Likely to Miss")
+    
+    # Display the prediction result
+    output$predictionOutput <- renderText({
+      paste("Prediction: ", prediction_result)
+   
+      # Format probability as a percentage
+      prediction_percentage <- sprintf("%.2f%%", prediction_prob * 100)
+      
+      # Combine prediction result with percentage for output
+      prediction_text <- paste("Prediction: ", prediction_result, 
+                               " (Probability: ", prediction_percentage, ")")
+      
+      # Display the prediction result with probability
+      output$predictionOutput <- renderText(prediction_text)
+       })
+  })
+ 
+  
   
   # Update action types based on selected player
   observe({
@@ -59,7 +110,9 @@ server <- function(input, output, session) {
     if (input$period != "All") {
       data <- data[data$PERIOD == input$period, ]
     }
-    data <- data[data$SHOT_DISTANCE >= input$distance[1] & data$SHOT_DISTANCE <= input$distance[2], ]
+    
+    # Use 'filter_distance' for filtering the shots
+    data <- data[data$SHOT_DISTANCE >= input$filter_distance[1] & data$SHOT_DISTANCE <= input$filter_distance[2], ]
     data
   })
   
