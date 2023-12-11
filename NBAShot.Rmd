@@ -18,16 +18,25 @@ runtime: shiny
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Executive Summary [TO-DO]
+# Overarching flow of this report
+1) Executive Summary
+2) Motivation
+3) Process
+   a. Piecing Together Data Set + Reading in Data
+   b. Cleaning Data Set
+   c. Pre-Processing Data
+   d. Splitting Train and Test
+   e. Creating models
+   f. Evaluating model statistics
+   g. Evaluating model test with Lakers' case study
+4) Explanation of R-Shiny
+5) Conclusion
+
+# Executive Summary [TO-DO at the end]
 
 
-# Introduction to Dataset
-
-We chose the NBA Shooting Data from the 2022-2023 Season that gives information on all attempted shots from the season. The dataset has information regarding the game, the player that made the shot, who they were being guarded by, where they took the shot, how much time was left, and much more. The overall goal is to create an accurate model of whether a shot will be made depending on these factors. This can have significant implications, especially in the realm of sports betting, but also for the teams to better understand trends for their team and the opponents they are playing against. It can also have implications for player contract negotiations and creating a well balanced team of players. We will walk through the models that we built with this dataset, and give an example with an R-Shiny Application on how the dataset can be used for playing making and calling. The business case for this decision is really important. For example, in the 2022 Eastern Conference Finals Game 7, Jimmy Buttler had the go-ahead 3 that would've led the Heat to win the Series. However, Jimmy Butler missed the shot, costing the Heat nearly $90 million in potential revenue. If the coach knew the probability of who was going to make a shot based on who was on the court, this could have changed how the play was drawn up, who got the ball, and potentially, who would have won the Series. 
-
-# Scraping Data 
-
-We used the `nba_api` to gather the data from the 2022-2023 Season. Through this we were able to gather all shot information from the Regular Season, as well as personal information regarding each player to make our predictions more accurate. You can find the Python code used to scrape the information here `https://github.com/mrrain02/TO414.git`. 
+# Motivation
+In Game 7 of the 2022 NBA Eastern Conference Finals, the Miami Heat were defeated by the Boston Celtics. Down 2 points with 16 seconds left in the game, the Miami Heat decided not to take a timeout and let Jimmy Butler take a shot from the left-wing of the 3-point line. Butler ended up missing the shot, and the Miami Heat ended up being eliminated from the 2022 NBA Playoffs. There were several implications that arose from Butler's missed shot. On the financial side, the Miami Heat forewent an NBA Final pool bonus of $3.20-$4.80M, NBA Final's home game ticket revenue of $42.5-$85.1M, and realized decreased ticket and apparel sales for the 2022-2023 regular season. On the non-financial standpoint, fans were scrutinizing the team, key players left in free agency, and key staff were relieved of their duties. Now imagine this scenario: the Miami Heat called a timeout, drew up a play based on a model's output that provided data regarding the highest probabilities of making a shot, executed the play, and the shot went in. To make this scenario a reality, we decided to create the NBA Shot Prediction model to equip NBA teams with a tool that can aid in drawing up plays to increase the chance a basket is scored.
 
 # Load Libraries
 ```{r}
@@ -45,9 +54,14 @@ library(randomForest)
 library(shiny)
 ```
 
+## Process [TO-DO]
+
+# 1) Piecing together a Data Set
+The data set we utilized for this model contains information regarding the game, the player that made the shot, who they were being guarded by, where they took the shot, how much time was left, and much more from the 2022-2023 NBA season. We used the `nba_api` to gather the data from the 2022-2023 Season. Through this we were able to gather all shot information from the Regular Season, as well as personal information regarding each player to make our predictions more accurate. You can find the Python code used to scrape the information here `https://github.com/mrrain02/TO414.git`.
 
 # Read Data
 ```{r}
+# Reading in the csv that contains the data set
 nba <- read.csv("2022_shot_data.csv", stringsAsFactors = TRUE)
 str(nba)
 summary(nba)
@@ -62,6 +76,9 @@ sample_size <- 0.1
 nba <- nba[sample(1:nrow(nba), sample_size*nrow(nba)), ]
 
 ```
+
+# 2) Cleaning Data Set [TO-DO]
+Description of what we are cleaning and why we are cleaning some data
 
 # Clean Data
 ```{r}
@@ -148,7 +165,9 @@ summary(nba)
 
 ```
 
-# Pre Process Data
+# 3) Pre Process Data [TO-DO]
+Small description of what is happening here
+
 # Pre-Processing Data
 ```{r}
 # Using model.matrix to convert all the factors to dummy variables
@@ -169,6 +188,8 @@ nba_norm <- as.data.frame(lapply(nbamm, normalize))
 summary(nba_norm)
 ```
 
+# 4) Splitting Train and Test [TO-DO]
+Small explanation of what the split was and why we chose it
 
 # Split Train and Test 
 ```{r}
@@ -200,7 +221,9 @@ nba_test_labels <- nba_norm[-train_set, "shot_made_flag1"]
 
 ```
 
-# Models
+# 5) Creating Models [TO-DO]
+Overview of all models created and why we chose these models to create.
+
 
 ## Logistical Regression 
 ```{r}
@@ -251,7 +274,6 @@ confusionMatrix(as.factor(binary_ann), as.factor(nba_test_labels), positive = "1
 
 ```
 
-
 ## KNN Model 
 ```{r}
 set.seed(12345)
@@ -265,8 +287,6 @@ knn_model <- readRDS("knn_model_5.rds")
 # Generate a confusion matrix using the 'caret' library to evaluate the performance of the KNN predictions ('knnpred') against the actual test labels ('tele_test_labels'). The 'positive' argument specifies that the positive class label is "1".
 confusionMatrix(as.factor(knn_model), as.factor(nba_test_labels), positive="1")
 ```
-
-
 
 ## Decision Tree
 ```{r}
@@ -295,8 +315,6 @@ rf_model <- readRDS("rf_model.rds")
 rf_predictions <- predict(rf_model, nba_test)
 confusionMatrix(as.factor(rf_predictions), as.factor(nba_test_labels), positive = "1")
 ```
-
-
 
 ## SVM Models 
 ### RBF Model 
@@ -404,8 +422,10 @@ plot(tree_model)
 ```
 
 
-# Exmaple Test
-This test goes over an example with the Laker's Starting Lineup. It assumes infomraiton regarding the different players, the same game situation, and a location on the map. The output gives a sample
+# Exmaple Test [TO-DO]
+Go more in-depth on this case study 
+
+This test goes over an example with the Lakers' Starting Lineup. It assumes infomraiton regarding the different players, the same game situation, and a location on the map. The output gives a sample
 
 <!-- # testpred1 <- predict(Nba_StepBase, test_nba, type = "response") -->
 <!-- # testpred1  -->
@@ -441,11 +461,22 @@ This test goes over an example with the Laker's Starting Lineup. It assumes info
 <!-- # test_nbamm -->
 <!-- #  -->
 
+
+# Evaluation of Model Statistics [TO-DO]
+Basically a description of the results -- talk about results of models, what it means, why we didn't reduce false positives / negatives more (whichever one Prof stated during our presentation), etc.
+
+# Small Description of R Shiny Dashboard [TO-DO]
+How to use it, etc.
+
 # R Shiny Dashboard
 ```{r, echo = FALSE}
 shinyAppDir("NBAGraph")
 ```
 
-# Conclusion 
+# Conclusion [Work in Progress]
+The NBA Shot Prediction Model will change the landscape of the National Basketball Association. Teams will be able to utilize this model to increase their chances of scoring, which will prove to be vital from both the financial and non-financial standpoint. However, we understand that this one is not perfect -- and we do acknowledge these limitations associated with using the model.
 
+One limitation associated with using this model is that there may be sampling or historical biases in the training data [EXPAND ON THIS], which can lead to inaccurate predictions. A way to mitigate this limitation is to regularly audit and update training data to ensure it remains representative of the current NBA landscape. Techniques such as data augmentation can ensure diversity in the data set. Another limitation is some factors influencing a player's ability to make a shot (e.g., mental health, injuries, playing different position than usual) is not captured by the data. 
+
+The second limitation presents an interesting situation in which we can further increase the effectiveness of this model. In the future, we would like to incorporate data points (e.g., injuries, mental health of players) that could provide more accurate predictions. Additionally, we can incorporate more models [EXPAND ON THIS].
 
