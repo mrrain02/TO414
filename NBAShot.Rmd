@@ -462,8 +462,13 @@ This test goes over an example with the Lakers' Starting Lineup. It assumes info
 <!-- #  -->
 
 
-# Evaluation of Model Statistics [TO-DO]
-Basically a description of the results -- talk about results of models, what it means, why we didn't reduce false positives / negatives more (whichever one Prof stated during our presentation), etc.
+# Evaluation of Model Statistics [WORK IN PROGRESS]
+
+Our model statistics yielded fairly similar results across the board, with an average accuracy score of 0.63 and Kappa value of 0.25. Our stacked decision tree produced slightly better results with regards to these two evaluative metrics, with a 0.65 accuracy and 0.28 Kappa. Though an accuracy level of 60% is not necessarily high in absolute terms, when considering this value in the context of NBA shots, field goal percentages for any given player typically never exceeds 50%; thus, our model's accuracy exceeding the average make rate for players is indicative of model success.
+
+Conversely, sensitivity and specificity figures varied much more across different models. In the context of our dataset, sensitivity represents the proportion of actual makes that our model predicted as makes, and specificity represents the proportion of actual misses that our model predicted as misses. Sensitivity was highest for the RBF and Polydot kernel models at 0.80 and lowest for our boost model at 0.46. Specificity results were the complete opposite, as they were highest for the boost model at 0.80 and lowest for the RBF and Polydot at 0.45. [EXPAND ON WHY]
+
+[Touch on why we didn't reduce false positives / negatives more (whichever one Prof stated during our presentation), etc.]
 
 # Small Description of R Shiny Dashboard [TO-DO]
 How to use it, etc.
@@ -474,7 +479,15 @@ shinyAppDir("NBAGraph")
 ```
 
 # Conclusion [Work in Progress]
-The NBA Shot Prediction Model will change the landscape of the National Basketball Association. Teams will be able to utilize this model to increase their chances of scoring, which will prove to be vital from both the financial and non-financial standpoint. However, we understand that this one is not perfect -- and we do acknowledge these limitations associated with using the model.
+The NBA Shot Prediction Model will change the landscape of the National Basketball Association. Teams will be able to utilize this model to increase their chances of scoring, which will prove to be vital from both the financial and non-financial standpoint. 
+
+In particular, by leveraging our shot predictor model, NBA teams can capture what would otherwise be foregone revenue and bonuses from key missed shots. These opportunity costs can be massive for key missed shots. For instance, Jimmy Butler's game-winning attempt and miss in the final seconds of the 2022 Eastern Conference Finals cost the Heat franchise upwards of $40-80M in lost Finals ticket revenue. 
+
+Non-financial impacts of key missed shots can be equally if not more devastating, as well. In recent years, the league has become less patient and tolerating of mistakes made by front office staff and players alike. Referring back to the Jimmy Butler example, despite an overall successful season, failing to secure a Finals berth resulted in the team letting go of key role players such as P.J. Tucker and Markieff Morris, as well as the team's Basketball Analytics manager, Ruth Riley.
+
+Our model present an opportunity to maximize probability of shot success, which in turn could avoid such negative impacts. It accounts for a wide array of different situation-specific variables, such as at what point in the game is the shot taken, who is defending the shooting player, distance from the basket, and much more. As such, teams would be able to specify precise scenarios and ultimately find out which player on their roster would be best suited to take the shot. 
+
+However, we understand that our product is not perfect -- and we do acknowledge these limitations associated with using the model.
 
 One limitation associated with using this model is that there may be sampling or historical biases in the training data [EXPAND ON THIS], which can lead to inaccurate predictions. A way to mitigate this limitation is to regularly audit and update training data to ensure it remains representative of the current NBA landscape. Techniques such as data augmentation can ensure diversity in the data set. Another limitation is some factors influencing a player's ability to make a shot (e.g., mental health, injuries, playing different position than usual) is not captured by the data. 
 
