@@ -11,21 +11,23 @@ output:
     toc_float: true
     number_sections: true
     code_folding: show
+runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Executive Summary [TO-DO]
 
-# Dataset Information 
 
-We chose the NBA Shooting Data from the 2022-2023 Season that gives information on all attempted shots from the season. The dataset has information regarding the game, the player that made the shot, who they were being guarded by, where they took the shot, how much time was left, and much more. The overall goal is to create an accurate model of whether a shot will be made depending on these factors. This can have significant implications, especially in the realm of sports betting, but also for the teams to better understand trends for their team and the opponents they are playing against. It can also have implications for player contract negotiations and creating a well balanced team of players. 
+# Introduction to Dataset
+
+We chose the NBA Shooting Data from the 2022-2023 Season that gives information on all attempted shots from the season. The dataset has information regarding the game, the player that made the shot, who they were being guarded by, where they took the shot, how much time was left, and much more. The overall goal is to create an accurate model of whether a shot will be made depending on these factors. This can have significant implications, especially in the realm of sports betting, but also for the teams to better understand trends for their team and the opponents they are playing against. It can also have implications for player contract negotiations and creating a well balanced team of players. We will walk through the models that we built with this dataset, and give an example with an R-Shiny Application on how the dataset can be used for playing making and calling. The business case for this decision is really important. For example, in the 2022 Eastern Conference Finals Game 7, Jimmy Buttler had the go-ahead 3 that would've led the Heat to win the Series. However, Jimmy Butler missed the shot, costing the Heat nearly $90 million in potential revenue. If the coach knew the probability of who was going to make a shot based on who was on the court, this could have changed how the play was drawn up, who got the ball, and potentially, who would have won the Series. 
 
 # Scraping Data 
 
-We used the `nba_api` to gather the data from the 2022-2023 Season. Through this we were able to gather all shot information from the Regular Season, as well as personal information regarding each player to make our predictions more accurate. You can find the code used to scrape the information here [ADD LINK to GITHUB].
-
+We used the `nba_api` to gather the data from the 2022-2023 Season. Through this we were able to gather all shot information from the Regular Season, as well as personal information regarding each player to make our predictions more accurate. You can find the Python code used to scrape the information here `https://github.com/mrrain02/TO414.git`. 
 
 # Load Libraries
 ```{r}
@@ -33,23 +35,31 @@ library(caret)
 library(neuralnet)
 library(caret)
 library(class)
+library(gbm)
 library(kernlab)
 library(C50)
 library(tidyr)
 library(dplyr)
 library(janitor)
+library(randomForest)
+library(shiny)
 ```
 
 
 # Read Data
 ```{r}
 nba <- read.csv("2022_shot_data.csv", stringsAsFactors = TRUE)
-# str(nba)
-# summary(nba)
-# 
-# set.seed(12345)
-# sample_size <- 0.1
-# nba <- nba[sample(1:nrow(nba), sample_size*nrow(nba)), ]
+str(nba)
+summary(nba)
+
+# Randomize the rows so all player shots are not the same
+set.seed(12345)
+nba <- nba[sample(nrow(nba)),]
+
+# Since there are over 200,000 Data points, need to take smaller randomized selection 
+set.seed(12345)
+sample_size <- 0.1
+nba <- nba[sample(1:nrow(nba), sample_size*nrow(nba)), ]
 
 ```
 
@@ -58,34 +68,55 @@ nba <- read.csv("2022_shot_data.csv", stringsAsFactors = TRUE)
 # Remove Unnecessary Columns 
 nba$GRID_TYPE <- NULL
 nba$GAME_ID <- NULL
-nba$EVENT_TYPE <- NULL
 nba$GAME_EVENT_ID <- NULL
 nba$PLAYER_ID <- NULL
+nba$PLAYER_NAME <- NULL
 nba$TEAM_ID_x <- NULL
-nba$TEAM_ID_y <- NULL
+nba$EVENT_TYPE <- NULL
 nba$SHOT_ATTEMPTED_FLAG <- NULL
 nba$GAME_DATE <- NULL
+nba$PLAYER_LAST_NAME <- NULL
+nba$PLAYER_FIRST_NAME <- NULL
 nba$PLAYER_SLUG <- NULL
+nba$TEAM_ID_y <- NULL
 nba$TEAM_SLUG <- NULL
 nba$IS_DEFUNCT <- NULL
 nba$TEAM_CITY <- NULL
 nba$TEAM_NAME_x <- NULL
 nba$TEAM_NAME_y <- NULL
-nba$STATS_TIMEFRAME <- NULL
+nba$TEAM_ABBREVIATION <- NULL
 nba$DRAFT_YEAR <- NULL
-nba$PLAYER_NAME <- NULL
-nba$PLAYER_LAST_NAME <- NULL
-nba$PLAYER_FIRST_NAME <- NULL
+nba$DRAFT_NUMBER <- NULL
+nba$STATS_TIMEFRAME <- NULL
+nba$ROSTER_STATUS <- NULL
+
+# Take Top 5 Colleges, Factorize Everything Else
+nba$COLLEGE <- as.character(nba$COLLEGE)
+nba$COLLEGE <- ifelse(!(nba$COLLEGE == "Kentucky" | nba$COLLEGE == "Duke" | nba$COLLEGE == "UCLA" |
+nba$COLLEGE == "Arizona" | nba$COLLEGE == "Michigan"), "Other", nba$COLLEGE)
+nba$COLLEGE <- as.factor(nba$COLLEGE)
+
+# Take Top 3 Countries, Factorize Everything Else
+nba$COUNTRY <- as.character(nba$COUNTRY)
+nba$COUNTRY <- ifelse(!(nba$COUNTRY == "USA" | nba$COUNTRY == "Canada" | nba$COUNTRY == "Australia"), "Other", nba$COLLEGE)
+nba$COUNTRY <- as.factor(nba$COUNTRY)
+
+# Take Top 5 Heights, Factorize Everything Else 
+nba$HEIGHT <- as.character(nba$HEIGHT)
+nba$HEIGHT <- ifelse(!(nba$HEIGHT == "6-5" | nba$HEIGHT == "6-4" | nba$HEIGHT == "6-8" |
+nba$HEIGHT == "6-6" | nba$HEIGHT == "6-7"), "Other", nba$HEIGHT)
+nba$HEIGHT <- as.factor(nba$HEIGHT)
 
 
-# nba$COLLEGE <- NULL
-# nba$COUNTRY <- NULL
+# Action Type 
+nba$ACTION_TYPE <- as.character(nba$ACTION_TYPE)
+nba$ACTION_TYPE <- ifelse(!(nba$ACTION_TYPE == "Jump Shot" | nba$ACTION_TYPE == "Pullup Jump shot" | nba$ACTION_TYPE == "Driving Layup Shot" |
+nba$ACTION_TYPE == "Driving Floating Jump Shot" | nba$ACTION_TYPE == "Layup Shot" | nba$ACTION_TYPE == "Running Layup Shot" | nba$ACTION_TYPE == "Step Back Jump shot" | nba$ACTION_TYPE == "Driving Finger Roll Layup Shot" | nba$ACTION_TYPE == "Cutting Layup Shot" | nba$ACTION_TYPE == "Tip Layup Shot"), "Other", nba$ACTION_TYPE)
+nba$ACTION_TYPE <- as.factor(nba$ACTION_TYPE)
 
 # Some Players are Undrafted, so Undraft Round and Number Will be Set to "0" to represent that (Make them factors as well)
 nba$DRAFT_ROUND[is.na(nba$DRAFT_ROUND)] <- "un_draft"
-nba$DRAFT_NUMBER[is.na(nba$DRAFT_NUMBER)] <- "un_draft"
 nba$DRAFT_ROUND <- as.factor(nba$DRAFT_ROUND)
-nba$DRAFT_NUMBER <- as.factor(nba$DRAFT_NUMBER)
 
 # PTS, REB, AST have some NA Values. We Replace NA values with the median in each column
 nba$PTS[is.na(nba$PTS)] <- median(nba$PTS, na.rm = TRUE)
@@ -98,17 +129,23 @@ nba$YEARS_NBA <- (nba$TO_YEAR - nba$FROM_YEAR) + 1
 nba$FROM_YEAR <- NULL
 nba$TO_YEAR <- NULL
 
-
-# Change Column Name to FGM 
-# colnames(nba)[colnames(nba) == "SHOT_MADE_FLAG"] <- "FGM"
+nba$SHOT_MADE_FLAG <- as.factor(nba$SHOT_MADE_FLAG)
 
 # There are some NA's (less than 90). We are just going to remove these rows
 nba <- na.omit(nba)
 
 colSums(is.na(nba))
 
+# Some Factor Levels have "" from the Empty Strings in the Original Dataset. Need to remove these
+nba$SHOT_TYPE <- droplevels(nba$SHOT_TYPE, exclude = "")
+nba$SHOT_ZONE_BASIC <- droplevels(nba$SHOT_ZONE_BASIC, exclude = "")
+nba$SHOT_ZONE_AREA <- droplevels(nba$SHOT_ZONE_AREA, exclude = "")
+nba$SHOT_ZONE_RANGE <- droplevels(nba$SHOT_ZONE_RANGE, exclude = "")
+nba$HTM <- droplevels(nba$HTM, exclude = "")
+nba$VTM <- droplevels(nba$VTM, exclude = "")
 str(nba)
 summary(nba)
+
 ```
 
 # Pre Process Data
@@ -129,6 +166,7 @@ normalize <- function(x) {
 
 # We are going to normalize everything for KNN and ANN
 nba_norm <- as.data.frame(lapply(nbamm, normalize))
+summary(nba_norm)
 ```
 
 
@@ -153,93 +191,261 @@ nba_svm_test <- nbamm[-train_set, ]
 
 #Create a train set and test set with separate x and y cols
 #First the predictors - all columns except the yyes column
-nba_train <- nba_norm[train_set, -match("SHOT_MADE_FLAG",names(nba_norm))]
-nba_test <- nba_norm[-train_set, -match("SHOT_MADE_FLAG",names(nba_norm))]
+nba_train <- nba_norm[train_set, -match("shot_made_flag1",names(nba_norm))]
+nba_test <- nba_norm[-train_set, -match("shot_made_flag1",names(nba_norm))]
 
 #Now the response (aka Labels) - only the yyes column
-nba_train_labels <- nba_norm[train_set, "SHOT_MADE_FLAG"]
-nba_test_labels <- nba_norm[-train_set, "SHOT_MADE_FLAG"]
+nba_train_labels <- nba_norm[train_set, "shot_made_flag1"]
+nba_test_labels <- nba_norm[-train_set, "shot_made_flag1"]
 
 ```
 
+# Models
 
-# Logistical Regression 
+## Logistical Regression 
 ```{r}
-
 
 NbaModel=glm(SHOT_MADE_FLAG ~., data=nba_log_train,family="binomial")
 
+
+Nba_StepBase = glm(SHOT_MADE_FLAG ~ PERIOD + SECONDS_REMAINING + ACTION_TYPE + SHOT_TYPE + 
+    SHOT_ZONE_BASIC + SHOT_ZONE_RANGE + HTM + WEIGHT + DRAFT_ROUND + 
+    YEARS_NBA + log1p(SHOT_DISTANCE) + sqrt(PTS) + sqrt(REB) + 
+    sqrt(YEARS_NBA) + SHOT_TYPE:SHOT_ZONE_BASIC, data=nba_log_train,family="binomial")
+
 # Use the logistic regression model 'NbaModel' to generate predictions on the test dataset
 
-testpred1 <- predict(NbaModel, nba_log_test, type = "response")
+testpred1 <- predict(Nba_StepBase, nba_log_test, type = "response")
 # Convert the predicted probabilities into binary outcomes: 1 if probability >= 0.38, otherwise 0
-binpred1 <- ifelse(testpred1 >=.5, 1, 0)
+binpred1 <- ifelse(testpred1 >=.50, 1, 0)
 # Generate a confusion matrix to evaluate the performance of t-he predictions against the actual test labels
 
 confusionMatrix(as.factor(binpred1), as.factor(nba_log_test$SHOT_MADE_FLAG), positive = "1")
 
 ```
 
-# ANN Model
+## Boosting (Replace ANN Model)
 ```{r}
-ann_model <- neuralnet(SHOT_MADE_FLAG ~., data=nba_ann_train, hidden = 3)
-
-# (Comment) Save the model to a file
-saveRDS(ann_model, "ann_model_3.rds")
-
+# set.seed(12345)
+# boost <- gbm(shot_made_flag1 ~ ., data = nba_ann_train,
+#              distribution = "gaussian",
+#              n.trees = 1000, shrinkage = 0.01,
+#              interaction.depth = 4,
+#              bag.fraction = 0.7,
+#              n.minobsinnode = 5)
+# saveRDS(boost, "boost.rds")
 # Load the model
-ann_model <- readRDS("ann_model_3.rds")
+boost <- readRDS("boost.rds")
 
-ann_prediction <- predict(ann_model, nba_ann_test)
+
+boost_prediction <- predict(boost, nba_ann_test)
 
 # Display a summary of the ANN model's predictions
-summary(ann_prediction)
+summary(boost_prediction)
 
 # Convert the predicted probabilities from the ANN model into binary outcomes: 1 if probability > 0.35, otherwise 0
-binary_ann <- ifelse(ann_prediction > .35, 1, 0)
+binary_ann <- ifelse(boost_prediction > .5, 1, 0)
 
 # Generate a confusion matrix to evaluate the performance of the binary predictions against the actual test labels
 confusionMatrix(as.factor(binary_ann), as.factor(nba_test_labels), positive = "1")
 
 ```
 
-# SVM Model
+
+## KNN Model 
 ```{r}
-m1 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "vanilladot")
-m2 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "rbfdot")
-m3 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "polydot")
-m4 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "tanhdot")
-m5 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "laplacedot")
-m6 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "besseldot")
-m7 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "anovadot")
-m8 <- ksvm(FGM ~ ., data = nba_svm_train, kernel = "splinedot")
+set.seed(12345)
+# knnpred <- knn(nba_train, nba_test, nba_train_labels, k = 150, prob=FALSE)
 
-p1 <- predict(m1, nba_svm_test)
-summary(p1)
-p2 <- predict(m2, nba_svm_test)
-summary(p2)
-p3 <- predict(m3, nba_svm_test)
-summary(p3)
-p4 <- predict(m4, nba_svm_test)
-summary(p4)
-p5 <- predict(m5, nba_svm_test)
-summary(p5)
-p6 <- predict(m6, nba_svm_test)
-summary(p6)
-p7 <- predict(m7, nba_svm_test)
-summary(p7)
-p8 <- predict(m8, nba_svm_test)
-summary(p8)
+# (Comment) Save the model to a file
+# saveRDS(knnpred, "knn_model_5.rds")
+# Load the model
+knn_model <- readRDS("knn_model_5.rds")
 
-confusionMatrix(as.factor(p1),as.factor(nba_svm_test$FGM))
-confusionMatrix(as.factor(p2),as.factor(nba_svm_test$FGM))
-confusionMatrix(as.factor(p3),as.factor(nba_svm_test$FGM))
-confusionMatrix(as.factor(p4),as.factor(nba_svm_test$FGM))
-confusionMatrix(as.factor(p5),as.factor(nba_svm_test$FGM))
-confusionMatrix(as.factor(p6),as.factor(nba_svm_test$FGM))
-confusionMatrix(as.factor(p7),as.factor(nba_svm_test$FGM))
-confusionMatrix(as.factor(p8),as.factor(nba_svm_test$FGM))
+# Generate a confusion matrix using the 'caret' library to evaluate the performance of the KNN predictions ('knnpred') against the actual test labels ('tele_test_labels'). The 'positive' argument specifies that the positive class label is "1".
+confusionMatrix(as.factor(knn_model), as.factor(nba_test_labels), positive="1")
+```
+
+
+
+## Decision Tree
+```{r}
+# nba_model <- C5.0(SHOT_MADE_FLAG ~ ., data = nba_log_train)
+# plot(nba_model)
+
+# (Comment) Save the model to a file
+# saveRDS(nba_model, "tree_model.rds")
+# Load the model
+tree_model <- readRDS("tree_model.rds")
+
+nba_predict <- predict(tree_model, nba_log_test)
+
+confusionMatrix(as.factor(nba_predict), as.factor(nba_log_test$SHOT_MADE_FLAG), positive = "1")
+# plot(hotel_model)
 
 ```
+## Random Forest
+```{r}
+set.seed(12345)
+# rf_model <- randomForest(x = nba_train, y = as.factor(nba_train_labels), ntree = 500)
+# saveRDS(rf_model, "rf_model.rds")
+# Load the model
+rf_model <- readRDS("rf_model.rds")
+
+rf_predictions <- predict(rf_model, nba_test)
+confusionMatrix(as.factor(rf_predictions), as.factor(nba_test_labels), positive = "1")
+```
+
+
+
+## SVM Models 
+### RBF Model 
+```{r}
+# m1 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "rbfdot")
+
+# saveRDS(m1, "svm_rbf_model.rds")
+# Load the model
+svm_rbf_model <- readRDS("svm_rbf_model.rds")
+
+# predict the values for rbfdot
+p1 <- predict(svm_rbf_model, nba_svm_test)
+summary(p1)
+
+p1 <- ifelse(p1 >= 0.5, 1 , 0)
+
+
+confusionMatrix(as.factor(p1),as.factor(nba_svm_test$shot_made_flag1))
+```
+
+
+### Poly Dot 
+```{r}
+# m2 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "rbfdot")
+
+# saveRDS(m2, "svm_poly_model.rds")
+# Load the model
+svm_poly_model <- readRDS("svm_poly_model.rds")
+
+# predict the values for rbfdot
+p2 <- predict(svm_poly_model, nba_svm_test)
+summary(p2)
+
+p2 <- ifelse(p2 >= 0.5, 1 , 0)
+
+
+confusionMatrix(as.factor(p2),as.factor(nba_svm_test$shot_made_flag1))
+
+```
+
+
+### laplacedot
+```{r}
+# m3 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "laplacedot")
+
+# saveRDS(m3, "svm_ldot_model.rds")
+# Load the model
+svm_poly_model <- readRDS("svm_ldot_model.rds")
+
+# predict the values for rbfdot
+p3 <- predict(svm_poly_model, nba_svm_test)
+summary(p3)
+
+p3 <- ifelse(p3 >= 0.5, 1 , 0)
+
+
+confusionMatrix(as.factor(p3),as.factor(nba_svm_test$shot_made_flag1))
+
+```
+
+
+```{r}
+# 2-Step Decision Tree
+
+## Combine Vectors
+
+# Combine all the models outputs into a single data frame (for the ones that could be kept in probability, they were kept in probability format for a better decision tree)
+
+nba_preds <- data.frame(
+  log = testpred1,
+  knn = as.numeric(knn_model),
+  rf = rf_predictions,
+  boost = boost_prediction,
+  smv = p1,
+  decision = nba_predict,
+  true = nba_ann_test$shot_made_flag1)
+
+head(nba_preds)
+summary(nba_preds)
+
+saveRDS(nba_preds, "nba_preds.rds")
+# Load the model
+
+```
+
+
+```{r}
+
+# Split the Data again into 70:30
+set.seed(12345)
+tree_rows <- sample(1:nrow(nba_preds), 0.7*nrow(nba_preds)) 
+
+tree_test <- nba_preds[-tree_rows, ]
+tree_train <- nba_preds[tree_rows, ]
+
+
+# Create a new Decision Tree with the predictions of the other models 
+tree_model <- C5.0(as.factor(true) ~ ., data = tree_train)
+
+tree_predict <- predict(tree_model, tree_test)
+
+# Look at the accuracy of the model 
+confusionMatrix(as.factor(tree_predict), as.factor(tree_test$true), positive = "1")
+plot(tree_model)
+```
+
+
+# Exmaple Test
+This test goes over an example with the Laker's Starting Lineup. It assumes infomraiton regarding the different players, the same game situation, and a location on the map. The output gives a sample
+
+<!-- # testpred1 <- predict(Nba_StepBase, test_nba, type = "response") -->
+<!-- # testpred1  -->
+<!-- # # Convert the predicted probabilities into binary outcomes: 1 if probability >= 0.38, otherwise 0 -->
+<!-- # binpred1 <- ifelse(testpred1 >=.50, 1, 0) -->
+<!-- #  -->
+<!-- # # Boost -->
+<!-- # boost_prediction <- predict(boost, test_norm) -->
+<!-- # # Convert the predicted probabilities from the ANN model into binary outcomes: 1 if probability > 0.35, otherwise 0 -->
+<!-- # boost_prediction -->
+<!-- # binary_ann <- ifelse(boost_prediction > .5, 1, 0) -->
+<!-- #  -->
+<!-- #  -->
+<!-- # # Tree -->
+<!-- # tree_model <- readRDS("tree_model.rds") -->
+<!-- #  -->
+<!-- # nba_predict <- predict(tree_model, test_nba) -->
+<!-- # nba_predict -->
+<!-- #  -->
+<!-- # nba_test <- test_norm[, -match("shot_made_flag1",names(test_norm))] -->
+<!-- #  -->
+<!-- # # RF -->
+<!-- # rf_predictions <- predict(rf_model, nba_test, type = "response") -->
+<!-- # rf_predictions -->
+<!-- #  -->
+<!-- # #KNN Pred -->
+<!-- # knnpred <- knn(nba_train, nba_test, nba_train_labels, k = 150, prob=TRUE) -->
+<!-- # knnpred -->
+<!-- #  -->
+<!-- # #SVM -->
+<!-- # p1 <- predict(svm_rbf_model, test_nbamm) -->
+<!-- # p1 -->
+<!-- # test_nbamm -->
+<!-- #  -->
+
+# R Shiny Dashboard
+```{r, echo = FALSE}
+shinyAppDir("NBAGraph")
+```
+
+# Conclusion 
 
 
