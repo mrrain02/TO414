@@ -470,8 +470,48 @@ Conversely, sensitivity and specificity figures varied much more across differen
 
 [Touch on why we didn't reduce false positives / negatives more (whichever one Prof stated during our presentation), etc.]
 
-# Small Description of R Shiny Dashboard [TO-DO]
-How to use it, etc.
+# R Shiny Application: NBA Shot Chart Explorer
+
+## Overview
+
+The R Shiny application, titled "NBA Shot Chart Explorer," serves as an interactive tool that augments our NBA Shot Prediction model. This application is designed to provide a user-friendly interface, enabling users to explore and visualize NBA shot data interactively. It offers insights into player performance, shot effectiveness, and game dynamics, crucial for strategic decision-making in basketball analytics.
+
+## Functionality and Usage
+
+The application includes several interactive elements, such as dropdown menus, sliders, and buttons, which allow users to filter and analyze NBA shot data based on various parameters like player name, action type, game period, and shot distance.
+
+### Key Features
+
+- **Player and Action Type Selection**: Users can select a specific player and the type of action (e.g., jump shot, layup) to analyze shots associated with those criteria.
+- **Game Period and Shot Distance Filtering**: The app allows filtering shots by game periods and distance ranges, offering a nuanced look into shooting strategies at different game stages.
+- **Shot Prediction**: Utilizing the predictive model developed, the app predicts the likelihood of a shot being successful based on user-defined parameters such as shot distance and court location.
+- **Visual Shot Chart**: A dynamic shot chart rendered using `ggplot2` visually represents shots on the court, highlighting made and missed shots.
+
+### Importance
+
+The app significantly enhances the usability of our NBA Shot Prediction model. It provides an interactive means to visualize complex shot data, making it more accessible for coaches, analysts, and basketball enthusiasts. The ability to predict shot outcomes and analyze shooting patterns can inform game strategies and player training programs.
+
+## How to Use the App
+
+1. **Select Parameters**: Choose a player, action type, game period, and shot distance range.
+2. **View Shot Chart**: Observe the distribution of shots on the court, color-coded by success.
+3. **Make Predictions**: Adjust sliders to set specific shot conditions and use the 'Predict' button to get the model's prediction for shot success.
+4. **Analyze Data**: Use the visual and statistical output to analyze shooting trends and player performance.
+
+## Future Expansions
+
+The application has significant potential for expansion and enhancement:
+
+1. **Team Line-Up Integration**: Incorporating real-time data to display a team's current line-up, allowing for scenario-based analysis of shot selection given the players on the court.
+2. **Situation-Based Recommendation**: Expanding the model to recommend the best shot or player to take a shot in a given situation, considering factors like player fatigue, defensive setups, and historical performance under similar conditions.
+3. **Enhanced Data Analytics**: Integrating more advanced statistical metrics and machine learning models to provide deeper insights into shooting efficiencies, player tendencies, and predictive analytics.
+4. **User Customization**: Allowing users to create custom scenarios or input specific game situations to see tailored recommendations and predictions.
+5. **Integration with Other Data Sources**: Including data from player tracking systems for more granular analysis, such as player movement patterns, spacing on the court, and defensive alignments.
+
+## Conclusion
+
+The NBA Shot Chart Explorer R Shiny application is a powerful tool that bridges the gap between complex data analytics and practical basketball strategy. It not only makes the data more interpretable and accessible but also opens up avenues for strategic insights that can be pivotal in high-stakes basketball decisions. Future expansions promise to make this tool an indispensable asset in the realm of basketball analytics.
+
 
 # R Shiny Dashboard
 ```{r, echo = FALSE}
