@@ -19,26 +19,28 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 # Overarching flow of this report
-1) Executive Summary
-2) Motivation
-3) Process
-   a. Piecing Together Data Set + Reading in Data
-   b. Cleaning Data Set
-   c. Pre-Processing Data
-   d. Splitting Train and Test
-   e. Creating models
-   f. Evaluating model statistics
-   g. Evaluating model test with Lakers' case study
-4) Explanation of R-Shiny
-5) Conclusion
+
+1)  Executive Summary
+2)  Motivation
+3)  Process
+    a.  Piecing Together Data Set + Reading in Data
+    b.  Cleaning Data Set
+    c.  Pre-Processing Data
+    d.  Splitting Train and Test
+    e.  Creating models
+    f.  Evaluating model statistics
+    g.  Evaluating model test with Lakers' case study
+4)  Explanation of R-Shiny
+5)  Conclusion
 
 # Executive Summary [TO-DO at the end]
 
-
 # Motivation
-In Game 7 of the 2022 NBA Eastern Conference Finals, the Miami Heat were defeated by the Boston Celtics. Down 2 points with 16 seconds left in the game, the Miami Heat decided not to take a timeout and let Jimmy Butler take a shot from the left-wing of the 3-point line. Butler ended up missing the shot, and the Miami Heat ended up being eliminated from the 2022 NBA Playoffs. There were several implications that arose from Butler's missed shot. On the financial side, the Miami Heat forewent an NBA Final pool bonus of $3.20-$4.80M, NBA Final's home game ticket revenue of $42.5-$85.1M, and realized decreased ticket and apparel sales for the 2022-2023 regular season. On the non-financial standpoint, fans were scrutinizing the team, key players left in free agency, and key staff were relieved of their duties. Now imagine this scenario: the Miami Heat called a timeout, drew up a play based on a model's output that provided data regarding the highest probabilities of making a shot, executed the play, and the shot went in. To make this scenario a reality, we decided to create the NBA Shot Prediction model to equip NBA teams with a tool that can aid in drawing up plays to increase the chance a basket is scored.
+
+In Game 7 of the 2022 NBA Eastern Conference Finals, the Miami Heat were defeated by the Boston Celtics. Down 2 points with 16 seconds left in the game, the Miami Heat decided not to take a timeout and let Jimmy Butler take a shot from the left-wing of the 3-point line. Butler ended up missing the shot, and the Miami Heat ended up being eliminated from the 2022 NBA Playoffs. There were several implications that arose from Butler's missed shot. On the financial side, the Miami Heat forewent an NBA Final pool bonus of \$3.20-\$4.80M, NBA Final's home game ticket revenue of \$42.5-\$85.1M, and realized decreased ticket and apparel sales for the 2022-2023 regular season. On the non-financial standpoint, fans were scrutinizing the team, key players left in free agency, and key staff were relieved of their duties. Now imagine this scenario: the Miami Heat called a timeout, drew up a play based on a model's output that provided data regarding the highest probabilities of making a shot, executed the play, and the shot went in. To make this scenario a reality, we decided to create the NBA Shot Prediction model to equip NBA teams with a tool that can aid in drawing up plays to increase the chance a basket is scored.
 
 # Load Libraries
+
 ```{r}
 library(caret)
 library(neuralnet)
@@ -57,9 +59,11 @@ library(shiny)
 ## Process [TO-DO]
 
 # 1) Piecing together a Data Set
+
 The data set we utilized for this model contains information regarding the game, the player that made the shot, who they were being guarded by, where they took the shot, how much time was left, and much more from the 2022-2023 NBA season. We used the `nba_api` to gather the data from the 2022-2023 Season. Through this we were able to gather all shot information from the Regular Season, as well as personal information regarding each player to make our predictions more accurate. You can find the Python code used to scrape the information here `https://github.com/mrrain02/TO414.git`.
 
 # Read Data
+
 ```{r}
 # Reading in the csv that contains the data set
 nba <- read.csv("2022_shot_data.csv", stringsAsFactors = TRUE)
@@ -77,10 +81,34 @@ nba <- nba[sample(1:nrow(nba), sample_size*nrow(nba)), ]
 
 ```
 
-# 2) Cleaning Data Set [TO-DO]
-Description of what we are cleaning and why we are cleaning some data
+# 2) Cleaning Data Set
+
+### Methodology and Importance
+
+Data cleaning is a crucial step in preparing our dataset for effective modeling. This process involves removing irrelevant data, handling missing values, and transforming variables to a format suitable for analysis. By cleaning the data, we aim to improve the accuracy and reliability of our predictive models, ultimately leading to more precise and actionable insights.
+
+### Steps in Cleaning
+
+1.  **Removing Unnecessary Columns**: We start by removing columns that are not relevant to our analysis. This includes identifiers like `GAME_ID`, `PLAYER_ID`, and descriptive attributes like `TEAM_NAME`. Keeping only necessary columns reduces complexity and focuses the analysis on relevant variables.
+
+2.  **Factorizing Categorical Variables**: Certain categorical variables like `COLLEGE` and `COUNTRY` are factorized. We retain the top categories (e.g., top 5 colleges) and group the rest under 'Other'. This approach simplifies the model's input while retaining essential categorical distinctions.
+
+3.  **Handling Missing Data**: We replace missing values in key variables (like `PTS`, `REB`, `AST`) with the median of each column. This method is chosen over mean imputation as it is less sensitive to outliers. For categorical data with missing values, such as `DRAFT_ROUND`, we introduce a new category (`un_draft`) to account for undrafted players.
+
+4.  **Creating New Variables**: We compute new variables, such as the total number of years a player has been in the NBA, which could provide additional insights into player experience and performance.
+
+5.  **Dropping NA Values**: Rows with NA values are dropped to ensure the integrity of the dataset. We also remove levels of factors that no longer exist in the data, cleaning up the dataset further.
+
+6.  **Droplevels in Factor Variables**: We clean factor variables to remove empty levels, ensuring that our models only deal with existing, meaningful categories.
+
+### Impact on Model Performance
+
+-   **Enhanced Model Accuracy**: Clean data without irrelevant or redundant information improves the accuracy of our models.
+-   **Reduced Overfitting**: By removing unnecessary predictors, we reduce the risk of overfitting our models to noise.
+-   **Improved Interpretability**: Clean and well-structured data make the models' outputs more interpretable and actionable.
 
 # Clean Data
+
 ```{r}
 # Remove Unnecessary Columns 
 nba$GRID_TYPE <- NULL
@@ -165,10 +193,31 @@ summary(nba)
 
 ```
 
-# 3) Pre Process Data [TO-DO]
-Small description of what is happening here
+# 3) Pre Process Data
+
+### Objective of Pre-Processing
+
+Data pre-processing is an essential stage in preparing our dataset for predictive modeling. This step involves transforming raw data into a format that is more suitable for analysis, enhancing the performance and accuracy of our predictive models.
+
+### Pre-Processing Steps
+
+1.  **Converting Categorical Variables to Dummy Variables**:
+    -   We use `model.matrix` to convert categorical variables in our dataset (`nba`) into dummy variables. This transformation is crucial because models like K-Nearest Neighbors (KNN) require numerical input.
+    -   The syntax `model.matrix(~.-1, nba)` creates dummy variables for all categorical variables in `nba`, excluding the intercept term (indicated by `-1`).
+2.  **Standardizing Names**:
+    -   After transformation, we standardize the column names using `clean_names` from the `janitor` package. This step ensures that our column names are consistent and readable, which is vital for later stages of analysis and modeling.
+3.  **Normalizing the Data**:
+    -   We define a `normalize` function that scales numeric values to a range of 0 to 1. This normalization is done by subtracting the minimum value of each column and dividing by the range of the column.
+    -   We apply this normalization to all columns in `nbamm` to prepare the data for models like KNN and ANN, which are sensitive to the scale of input data.
+
+### Importance of Pre-Processing
+
+-   **Improving Model Performance**: Normalizing and converting data to a suitable format helps improve the performance of machine learning models, especially those sensitive to the scale of data, such as KNN and ANN.
+-   **Ensuring Compatibility**: Converting categorical data to dummy variables ensures compatibility with a wide range of machine learning algorithms that require numerical input.
+-   **Data Standardization**: Normalizing data brings all variables to the same scale, reducing bias towards variables with larger ranges.
 
 # Pre-Processing Data
+
 ```{r}
 # Using model.matrix to convert all the factors to dummy variables
 # We are converting all of the factors into dummy variables as the input into knn has to be numeric
@@ -188,10 +237,36 @@ nba_norm <- as.data.frame(lapply(nbamm, normalize))
 summary(nba_norm)
 ```
 
-# 4) Splitting Train and Test [TO-DO]
-Small explanation of what the split was and why we chose it
+# 4) Splitting Train and Test
 
-# Split Train and Test 
+### Purpose of Splitting Data
+
+Splitting the dataset into training and testing sets is a fundamental step in the process of building and validating predictive models. The training set is used to train the model, allowing it to learn the patterns in the data. The testing set, which the model has not seen during training, is used to evaluate its performance. This approach helps in assessing how well the model generalizes to new, unseen data.
+
+### Methodology
+
+1.  **Setting a Seed for Reproducibility**: We begin by setting a seed (`set.seed(12345)`) to ensure that our results are reproducible. This means that every time the code is run, it will generate the same random split of data.
+
+2.  **Creating Train and Test Indices**: We randomly sample 70% of the data indices to create our training set, ensuring that a majority of the data is used for training the model, while leaving enough data for an effective test.
+
+3.  **Splitting for Different Models**:
+
+    -   **Logistic Regression**: The dataset (`nba`) is split into `nba_log_train` and `nba_log_test` for training and testing the logistic regression model.
+    -   **Artificial Neural Network (ANN)**: A normalized version of the dataset (`nba_norm`) is used to split into training (`nba_ann_train`) and testing (`nba_ann_test`) sets for the ANN model.
+    -   **Support Vector Machine (SVM)**: Another transformed version of the dataset (`nbamm`) is split for training (`nba_svm_train`) and testing (`nba_svm_test`) the SVM model.
+
+4.  **Separating Predictors and Labels**:
+
+    -   We create separate datasets for predictors (`nba_train`, `nba_test`) and labels (`nba_train_labels`, `nba_test_labels`). This is essential for supervised learning where the model needs to learn to predict the labels from the predictors.
+
+### Importance of This Approach
+
+-   **Avoiding Overfitting**: By testing the model on data it hasn't seen before (test set), we can gauge its ability to generalize and avoid overfitting to the training data.
+-   **Model Validation**: The test set acts as a proxy for new data, helping validate the model's performance in real-world scenarios.
+-   **Balanced Representation**: Using 70% of the data for training strikes a balance, allowing the model to learn effectively while having enough data to test its predictions.
+
+# Split Train and Test
+
 ```{r}
 
 set.seed(12345)
@@ -222,10 +297,42 @@ nba_test_labels <- nba_norm[-train_set, "shot_made_flag1"]
 ```
 
 # 5) Creating Models [TO-DO]
+
 Overview of all models created and why we chose these models to create.
 
+### Overview
 
-## Logistical Regression 
+In our NBA Shot Analysis project, we have employed a range of machine learning models. Each model has its unique strengths and caters to different aspects of prediction, enhancing the robustness of our analysis. Below, we outline the models we created and the rationale behind choosing them.
+
+### Models and Their Rationale
+
+1.  **Logistic Regression**:
+    -   Logistic regression is used for its simplicity and effectiveness in binary classification tasks. In our case, it predicts the probability of a shot being made (`SHOT_MADE_FLAG`).
+    -   We use two variants: a general model with all predictors and a stepwise model focusing on key predictors and interactions, providing insights into important factors affecting shot success.
+2.  **Boosting Model (Gradient Boosting Machine)**:
+    -   Boosting is an ensemble technique that combines multiple weak learners to create a strong predictive model. It's particularly effective in handling various types of data and improving prediction accuracy.
+3.  **K-Nearest Neighbors (KNN)**:
+    -   KNN is a non-parametric method used for its simplicity and effectiveness in capturing relationships between variables. It's particularly useful for classification based on feature similarity.
+4.  **Decision Tree**:
+    -   Decision trees are intuitive and easy to interpret. They are used to model the decision rules that lead to a shot being made or missed.
+5.  **Random Forest**:
+    -   An ensemble of decision trees, Random Forest, is known for its high accuracy and ability to run efficiently on large datasets. It also handles overfitting well.
+6.  **Support Vector Machine (SVM) Models**:
+    -   We employ different kernels (RBF, Poly Dot, Laplacedot) in SVM to capture complex relationships in the data. Each kernel has its own way of handling the feature space, providing diverse perspectives on the data.
+7.  **2-Step Decision Tree**:
+    -   As an advanced approach, we combine the outputs of all models into a single dataset and apply a 2-step decision tree. This method leverages the strengths of each individual model and captures the most predictive signals from each.
+
+### Importance of Model Diversity
+
+-   **Comprehensive Analysis**: Using different models allows us to capture various aspects of the data, making our analysis more comprehensive.
+-   **Model Validation**: Comparing predictions from multiple models helps in validating the results and ensures that our conclusions are robust.
+
+### Conclusion
+
+The diverse set of models created in this project allows for a multi-faceted analysis of NBA shot data. Each model contributes uniquely to our understanding of what factors influence shot success, thereby enhancing the overall predictive power and reliability of our analysis.
+
+## Logistical Regression
+
 ```{r}
 
 NbaModel=glm(SHOT_MADE_FLAG ~., data=nba_log_train,family="binomial")
@@ -248,6 +355,7 @@ confusionMatrix(as.factor(binpred1), as.factor(nba_log_test$SHOT_MADE_FLAG), pos
 ```
 
 ## Boosting (Replace ANN Model)
+
 ```{r}
 # set.seed(12345)
 # boost <- gbm(shot_made_flag1 ~ ., data = nba_ann_train,
@@ -274,7 +382,8 @@ confusionMatrix(as.factor(binary_ann), as.factor(nba_test_labels), positive = "1
 
 ```
 
-## KNN Model 
+## KNN Model
+
 ```{r}
 set.seed(12345)
 # knnpred <- knn(nba_train, nba_test, nba_train_labels, k = 150, prob=FALSE)
@@ -289,6 +398,7 @@ confusionMatrix(as.factor(knn_model), as.factor(nba_test_labels), positive="1")
 ```
 
 ## Decision Tree
+
 ```{r}
 # nba_model <- C5.0(SHOT_MADE_FLAG ~ ., data = nba_log_train)
 # plot(nba_model)
@@ -304,7 +414,9 @@ confusionMatrix(as.factor(nba_predict), as.factor(nba_log_test$SHOT_MADE_FLAG), 
 # plot(hotel_model)
 
 ```
+
 ## Random Forest
+
 ```{r}
 set.seed(12345)
 # rf_model <- randomForest(x = nba_train, y = as.factor(nba_train_labels), ntree = 500)
@@ -316,8 +428,10 @@ rf_predictions <- predict(rf_model, nba_test)
 confusionMatrix(as.factor(rf_predictions), as.factor(nba_test_labels), positive = "1")
 ```
 
-## SVM Models 
-### RBF Model 
+## SVM Models
+
+### RBF Model
+
 ```{r}
 # m1 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "rbfdot")
 
@@ -335,8 +449,8 @@ p1 <- ifelse(p1 >= 0.5, 1 , 0)
 confusionMatrix(as.factor(p1),as.factor(nba_svm_test$shot_made_flag1))
 ```
 
+### Poly Dot
 
-### Poly Dot 
 ```{r}
 # m2 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "rbfdot")
 
@@ -355,8 +469,8 @@ confusionMatrix(as.factor(p2),as.factor(nba_svm_test$shot_made_flag1))
 
 ```
 
-
 ### laplacedot
+
 ```{r}
 # m3 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "laplacedot")
 
@@ -374,7 +488,6 @@ p3 <- ifelse(p3 >= 0.5, 1 , 0)
 confusionMatrix(as.factor(p3),as.factor(nba_svm_test$shot_made_flag1))
 
 ```
-
 
 ```{r}
 # 2-Step Decision Tree
@@ -400,7 +513,6 @@ saveRDS(nba_preds, "nba_preds.rds")
 
 ```
 
-
 ```{r}
 
 # Split the Data again into 70:30
@@ -421,46 +533,77 @@ confusionMatrix(as.factor(tree_predict), as.factor(tree_test$true), positive = "
 plot(tree_model)
 ```
 
-
 # Exmaple Test [TO-DO]
-Go more in-depth on this case study 
+
+Go more in-depth on this case study
 
 This test goes over an example with the Lakers' Starting Lineup. It assumes infomraiton regarding the different players, the same game situation, and a location on the map. The output gives a sample
 
 <!-- # testpred1 <- predict(Nba_StepBase, test_nba, type = "response") -->
+
 <!-- # testpred1  -->
+
 <!-- # # Convert the predicted probabilities into binary outcomes: 1 if probability >= 0.38, otherwise 0 -->
+
 <!-- # binpred1 <- ifelse(testpred1 >=.50, 1, 0) -->
-<!-- #  -->
-<!-- # # Boost -->
-<!-- # boost_prediction <- predict(boost, test_norm) -->
-<!-- # # Convert the predicted probabilities from the ANN model into binary outcomes: 1 if probability > 0.35, otherwise 0 -->
-<!-- # boost_prediction -->
-<!-- # binary_ann <- ifelse(boost_prediction > .5, 1, 0) -->
-<!-- #  -->
-<!-- #  -->
-<!-- # # Tree -->
-<!-- # tree_model <- readRDS("tree_model.rds") -->
-<!-- #  -->
-<!-- # nba_predict <- predict(tree_model, test_nba) -->
-<!-- # nba_predict -->
-<!-- #  -->
-<!-- # nba_test <- test_norm[, -match("shot_made_flag1",names(test_norm))] -->
-<!-- #  -->
-<!-- # # RF -->
-<!-- # rf_predictions <- predict(rf_model, nba_test, type = "response") -->
-<!-- # rf_predictions -->
-<!-- #  -->
-<!-- # #KNN Pred -->
-<!-- # knnpred <- knn(nba_train, nba_test, nba_train_labels, k = 150, prob=TRUE) -->
-<!-- # knnpred -->
-<!-- #  -->
-<!-- # #SVM -->
-<!-- # p1 <- predict(svm_rbf_model, test_nbamm) -->
-<!-- # p1 -->
-<!-- # test_nbamm -->
+
 <!-- #  -->
 
+<!-- # # Boost -->
+
+<!-- # boost_prediction <- predict(boost, test_norm) -->
+
+<!-- # # Convert the predicted probabilities from the ANN model into binary outcomes: 1 if probability > 0.35, otherwise 0 -->
+
+<!-- # boost_prediction -->
+
+<!-- # binary_ann <- ifelse(boost_prediction > .5, 1, 0) -->
+
+<!-- #  -->
+
+<!-- #  -->
+
+<!-- # # Tree -->
+
+<!-- # tree_model <- readRDS("tree_model.rds") -->
+
+<!-- #  -->
+
+<!-- # nba_predict <- predict(tree_model, test_nba) -->
+
+<!-- # nba_predict -->
+
+<!-- #  -->
+
+<!-- # nba_test <- test_norm[, -match("shot_made_flag1",names(test_norm))] -->
+
+<!-- #  -->
+
+<!-- # # RF -->
+
+<!-- # rf_predictions <- predict(rf_model, nba_test, type = "response") -->
+
+<!-- # rf_predictions -->
+
+<!-- #  -->
+
+<!-- # #KNN Pred -->
+
+<!-- # knnpred <- knn(nba_train, nba_test, nba_train_labels, k = 150, prob=TRUE) -->
+
+<!-- # knnpred -->
+
+<!-- #  -->
+
+<!-- # #SVM -->
+
+<!-- # p1 <- predict(svm_rbf_model, test_nbamm) -->
+
+<!-- # p1 -->
+
+<!-- # test_nbamm -->
+
+<!-- #  -->
 
 # Evaluation of Model Statistics [WORK IN PROGRESS]
 
@@ -482,10 +625,10 @@ The application includes several interactive elements, such as dropdown menus, s
 
 ### Key Features
 
-- **Player and Action Type Selection**: Users can select a specific player and the type of action (e.g., jump shot, layup) to analyze shots associated with those criteria.
-- **Game Period and Shot Distance Filtering**: The app allows filtering shots by game periods and distance ranges, offering a nuanced look into shooting strategies at different game stages.
-- **Shot Prediction**: Utilizing the predictive model developed, the app predicts the likelihood of a shot being successful based on user-defined parameters such as shot distance and court location.
-- **Visual Shot Chart**: A dynamic shot chart rendered using `ggplot2` visually represents shots on the court, highlighting made and missed shots.
+-   **Player and Action Type Selection**: Users can select a specific player and the type of action (e.g., jump shot, layup) to analyze shots associated with those criteria.
+-   **Game Period and Shot Distance Filtering**: The app allows filtering shots by game periods and distance ranges, offering a nuanced look into shooting strategies at different game stages.
+-   **Shot Prediction**: Utilizing the predictive model developed, the app predicts the likelihood of a shot being successful based on user-defined parameters such as shot distance and court location.
+-   **Visual Shot Chart**: A dynamic shot chart rendered using `ggplot2` visually represents shots on the court, highlighting made and missed shots.
 
 ### Importance
 
@@ -493,43 +636,39 @@ The app significantly enhances the usability of our NBA Shot Prediction model. I
 
 ## How to Use the App
 
-1. **Select Parameters**: Choose a player, action type, game period, and shot distance range.
-2. **View Shot Chart**: Observe the distribution of shots on the court, color-coded by success.
-3. **Make Predictions**: Adjust sliders to set specific shot conditions and use the 'Predict' button to get the model's prediction for shot success.
-4. **Analyze Data**: Use the visual and statistical output to analyze shooting trends and player performance.
+1.  **Select Parameters**: Choose a player, action type, game period, and shot distance range.
+2.  **View Shot Chart**: Observe the distribution of shots on the court, color-coded by success.
+3.  **Make Predictions**: Adjust sliders to set specific shot conditions and use the 'Predict' button to get the model's prediction for shot success.
+4.  **Analyze Data**: Use the visual and statistical output to analyze shooting trends and player performance.
 
 ## Future Expansions
 
 The application has significant potential for expansion and enhancement:
 
-1. **Team Line-Up Integration**: Incorporating real-time data to display a team's current line-up, allowing for scenario-based analysis of shot selection given the players on the court.
-2. **Situation-Based Recommendation**: Expanding the model to recommend the best shot or player to take a shot in a given situation, considering factors like player fatigue, defensive setups, and historical performance under similar conditions.
-3. **Enhanced Data Analytics**: Integrating more advanced statistical metrics and machine learning models to provide deeper insights into shooting efficiencies, player tendencies, and predictive analytics.
-4. **User Customization**: Allowing users to create custom scenarios or input specific game situations to see tailored recommendations and predictions.
-5. **Integration with Other Data Sources**: Including data from player tracking systems for more granular analysis, such as player movement patterns, spacing on the court, and defensive alignments.
-
-## Conclusion
-
-The NBA Shot Chart Explorer R Shiny application is a powerful tool that bridges the gap between complex data analytics and practical basketball strategy. It not only makes the data more interpretable and accessible but also opens up avenues for strategic insights that can be pivotal in high-stakes basketball decisions. Future expansions promise to make this tool an indispensable asset in the realm of basketball analytics.
-
+1.  **Team Line-Up Integration**: Incorporating real-time data to display a team's current line-up, allowing for scenario-based analysis of shot selection given the players on the court.
+2.  **Situation-Based Recommendation**: Expanding the model to recommend the best shot or player to take a shot in a given situation, considering factors like player fatigue, defensive setups, and historical performance under similar conditions.
+3.  **Enhanced Data Analytics**: Integrating more advanced statistical metrics and machine learning models to provide deeper insights into shooting efficiencies, player tendencies, and predictive analytics.
+4.  **User Customization**: Allowing users to create custom scenarios or input specific game situations to see tailored recommendations and predictions.
+5.  **Integration with Other Data Sources**: Including data from player tracking systems for more granular analysis, such as player movement patterns, spacing on the court, and defensive alignments.
 
 # R Shiny Dashboard
+
 ```{r, echo = FALSE}
 shinyAppDir("NBAGraph")
 ```
 
 # Conclusion [Work in Progress]
-The NBA Shot Prediction Model will change the landscape of the National Basketball Association. Teams will be able to utilize this model to increase their chances of scoring, which will prove to be vital from both the financial and non-financial standpoint. 
 
-In particular, by leveraging our shot predictor model, NBA teams can capture what would otherwise be foregone revenue and bonuses from key missed shots. These opportunity costs can be massive for key missed shots. For instance, Jimmy Butler's game-winning attempt and miss in the final seconds of the 2022 Eastern Conference Finals cost the Heat franchise upwards of $40-80M in lost Finals ticket revenue. 
+The NBA Shot Prediction Model will change the landscape of the National Basketball Association. Teams will be able to utilize this model to increase their chances of scoring, which will prove to be vital from both the financial and non-financial standpoint.
+
+In particular, by leveraging our shot predictor model, NBA teams can capture what would otherwise be foregone revenue and bonuses from key missed shots. These opportunity costs can be massive for key missed shots. For instance, Jimmy Butler's game-winning attempt and miss in the final seconds of the 2022 Eastern Conference Finals cost the Heat franchise upwards of \$40-80M in lost Finals ticket revenue.
 
 Non-financial impacts of key missed shots can be equally if not more devastating, as well. In recent years, the league has become less patient and tolerating of mistakes made by front office staff and players alike. Referring back to the Jimmy Butler example, despite an overall successful season, failing to secure a Finals berth resulted in the team letting go of key role players such as P.J. Tucker and Markieff Morris, as well as the team's Basketball Analytics manager, Ruth Riley.
 
-Our model present an opportunity to maximize probability of shot success, which in turn could avoid such negative impacts. It accounts for a wide array of different situation-specific variables, such as at what point in the game is the shot taken, who is defending the shooting player, distance from the basket, and much more. As such, teams would be able to specify precise scenarios and ultimately find out which player on their roster would be best suited to take the shot. 
+Our model present an opportunity to maximize probability of shot success, which in turn could avoid such negative impacts. It accounts for a wide array of different situation-specific variables, such as at what point in the game is the shot taken, who is defending the shooting player, distance from the basket, and much more. As such, teams would be able to specify precise scenarios and ultimately find out which player on their roster would be best suited to take the shot.
 
 However, we understand that our product is not perfect -- and we do acknowledge these limitations associated with using the model.
 
-One limitation associated with using this model is that there may be sampling or historical biases in the training data [EXPAND ON THIS], which can lead to inaccurate predictions. A way to mitigate this limitation is to regularly audit and update training data to ensure it remains representative of the current NBA landscape. Techniques such as data augmentation can ensure diversity in the data set. Another limitation is some factors influencing a player's ability to make a shot (e.g., mental health, injuries, playing different position than usual) is not captured by the data. 
+One limitation associated with using this model is that there may be sampling or historical biases in the training data [EXPAND ON THIS], which can lead to inaccurate predictions. A way to mitigate this limitation is to regularly audit and update training data to ensure it remains representative of the current NBA landscape. Techniques such as data augmentation can ensure diversity in the data set. Another limitation is some factors influencing a player's ability to make a shot (e.g., mental health, injuries, playing different position than usual) is not captured by the data.
 
 The second limitation presents an interesting situation in which we can further increase the effectiveness of this model. In the future, we would like to incorporate data points (e.g., injuries, mental health of players) that could provide more accurate predictions. Additionally, we can incorporate more models [EXPAND ON THIS].
-
