@@ -1,9 +1,7 @@
 ---
-title: |
-  ![](IMG_1911.png){width=3in}
-  Final Project: NBA Shot Analysis
+title: "Final Project: NBA Shot Analysis"
 author: "R-Hinos"
-date: "2023-12-05"
+date: "2023-12-13"
 output: 
   html_document: 
     highlight: tango
@@ -13,14 +11,16 @@ output:
     toc_float: true
     number_sections: true
     code_folding: show
-    title-slide: "IMG_1911.png"
-
-runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+```{r echo=FALSE, out.width = "80%", fig.align = "center"}
+knitr::include_graphics("IMG_1911.png")
+```
+
 
 # Executive Summary
 The "NBA Shot Analysis" project aims to revolutionize decision-making in critical moments of NBA games by developing a predictive model for shot outcomes. Utilizing comprehensive data from the 2022-2023 NBA season, we tailored a dataset to contain information crucial for predicting binary shot outcomes. Implications of a model that can predict shot outcomes can give coaches and analytics teams insight to when, where, and with whom a team should be shooting the ball for the best statistical outcome. The ability to increase the chance of success in any given basketball play would have massive financial and non-financial implications including and not limited to player and team bonuses, playoff appearances and wins, and increased fan engagement. 
@@ -315,7 +315,9 @@ In our NBA Shot Analysis project, we have employed a range of machine learning m
 
 The diverse set of models created in this project allows for a multi-faceted analysis of NBA shot data. Each model contributes uniquely to our understanding of what factors influence shot success, thereby enhancing the overall predictive power and reliability of our analysis.
 
-## Logistical Regression
+## Models
+
+### Logistical Regression
 
 ```{r}
 
@@ -338,7 +340,7 @@ confusionMatrix(as.factor(binpred1), as.factor(nba_log_test$SHOT_MADE_FLAG), pos
 
 ```
 
-## Boosting 
+### Boosting 
 
 ```{r}
 # set.seed(12345)
@@ -359,14 +361,14 @@ boost_prediction <- predict(boost, nba_ann_test)
 summary(boost_prediction)
 
 # Convert the predicted probabilities from the ANN model into binary outcomes: 1 if probability > 0.35, otherwise 0
-binary_ann <- ifelse(boost_prediction > .5, 1, 0)
+binary_ann <- ifelse(boost_prediction > .48, 1, 0)
 
 # Generate a confusion matrix to evaluate the performance of the binary predictions against the actual test labels
 confusionMatrix(as.factor(binary_ann), as.factor(nba_test_labels), positive = "1")
 
 ```
 
-## KNN Model
+### KNN Model
 
 ```{r}
 set.seed(12345)
@@ -381,7 +383,7 @@ knn_model <- readRDS("knn_model_5.rds")
 confusionMatrix(as.factor(knn_model), as.factor(nba_test_labels), positive="1")
 ```
 
-## Decision Tree
+### Decision Tree
 
 ```{r}
 # nba_model <- C5.0(SHOT_MADE_FLAG ~ ., data = nba_log_train)
@@ -399,7 +401,7 @@ confusionMatrix(as.factor(nba_predict), as.factor(nba_log_test$SHOT_MADE_FLAG), 
 
 ```
 
-## Random Forest
+### Random Forest
 
 ```{r}
 set.seed(12345)
@@ -412,9 +414,9 @@ rf_predictions <- predict(rf_model, nba_test)
 confusionMatrix(as.factor(rf_predictions), as.factor(nba_test_labels), positive = "1")
 ```
 
-## SVM Models
+### SVM Models
 
-### RBF Model
+#### RBF Model
 
 ```{r}
 # m1 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "rbfdot")
@@ -433,7 +435,7 @@ p1 <- ifelse(p1 >= 0.5, 1 , 0)
 confusionMatrix(as.factor(p1),as.factor(nba_svm_test$shot_made_flag1))
 ```
 
-### Poly Dot
+#### Poly Dot
 
 ```{r}
 # m2 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "rbfdot")
@@ -453,7 +455,7 @@ confusionMatrix(as.factor(p2),as.factor(nba_svm_test$shot_made_flag1))
 
 ```
 
-### laplacedot
+#### laplacedot
 
 ```{r}
 # m3 <- ksvm(shot_made_flag1 ~ ., data = nba_svm_train, kernel = "laplacedot")
@@ -473,9 +475,10 @@ confusionMatrix(as.factor(p3),as.factor(nba_svm_test$shot_made_flag1))
 
 ```
 
-```{r}
-# 2-Step Decision Tree
 
+### 2-Step Decision Tree
+
+```{r}
 ## Combine Vectors
 
 # Combine all the models outputs into a single data frame (for the ones that could be kept in probability, they were kept in probability format for a better decision tree)
@@ -517,18 +520,13 @@ confusionMatrix(as.factor(tree_predict), as.factor(tree_test$true), positive = "
 plot(tree_model)
 ```
 
-# Example Test [TO-DO]
-
-This test goes over an example with the Lakers' Starting Lineup. It assumes infomraiton regarding the different players, the same game situation, and a location on the map. The output gives a sample
-
-
 # Evaluation of Model Statistics
 
 Our model statistics yielded fairly similar results across the board, with an average accuracy score of 0.63 and Kappa value of 0.25. Our stacked decision tree produced slightly better results with regards to these two evaluative metrics, with a 0.65 accuracy and 0.28 Kappa. Though an accuracy level of 60% is not necessarily high in absolute terms, when considering this value in the context of NBA shots, field goal percentages for any given player typically never exceeds 50%; thus, our model's accuracy exceeding the average make rate for players is indicative of model success.
 
-Conversely, sensitivity and specificity figures varied much more across different models. In the context of our dataset, sensitivity represents the proportion of actual makes that our model predicted as makes, and specificity represents the proportion of actual misses that our model predicted as misses. Sensitivity was highest for the RBF and Polydot kernel models at 0.80 and lowest for our boost model at 0.46. Specificity results were the complete opposite, as they were highest for the boost model at 0.80 and lowest for the RBF and Polydot at 0.45. [EXPAND ON WHY]
+Conversely, sensitivity and specificity figures varied much more across different models. In the context of our dataset, sensitivity represents the proportion of actual makes that our model predicted as makes, and specificity represents the proportion of actual misses that our model predicted as misses. Sensitivity was highest for the RBF and Polydot kernel models at 0.80 and lowest for our boost model at 0.46. Specificity results were the complete opposite, as they were highest for the boost model at 0.80 and lowest for the RBF and Polydot at 0.45. The disparities in sensitivity and specificity across the models can be attributed to the inherent trade-offs between these two metrics in classification tasks. Sensitivity, also known as true positive rate or recall, is concerned with minimizing false negatives, meaning correctly identifying instances of the positive class. On the other hand, specificity, or true negative rate, focuses on minimizing false positives, ensuring accurate identification of instances belonging to the negative class.
 
-[Touch on why we didn't reduce false positives / negatives more (whichever one Prof stated during our presentation), etc.]
+As you can see from the confusion matrix of the Two-Step Model, there is a high number of False Positives (458). We worked on trying to reduce this as much as we could by lowering the thresholds for the different models. For example, with Boosting, we found that a threshold of 0.48 to be optimal between the number of False Positives and the Kappa. We did this across all the models. If our sole goal was to reduce the False Positives, we would've lowered the threshold for all the models, but we found this to significantly hurt the accuracy and kappa so we refrained from keeping it that way. 
 
 # R Shiny Application: NBA Shot Chart Explorer
 
@@ -569,10 +567,12 @@ The application has significant potential for expansion and enhancement:
 5.  **Integration with Other Data Sources**: Including data from player tracking systems for more granular analysis, such as player movement patterns, spacing on the court, and defensive alignments.
 
 # R Shiny Dashboard
-
-```{r, echo = FALSE}
-shinyAppDir("NBAGraph")
+Because the HTML file is static for submission, we cannot integrate a working version of the Dashboard. However, below is an image of how it looks. You can access the Shiny Dashboard on the GitHub `https://github.com/mrrain02/TO414.git` 
+```{r echo=FALSE, out.width = "80%", fig.align = "center"}
+knitr::include_graphics("shiny.png")
 ```
+
+
 
 # Conclusion
 
@@ -586,6 +586,6 @@ Our model present an opportunity to maximize probability of shot success, which 
 
 However, we understand that our product is not perfect -- and we do acknowledge these limitations associated with using the model.
 
-One limitation associated with using this model is that there may be sampling or historical biases in the training data [EXPAND ON THIS], which can lead to inaccurate predictions. A way to mitigate this limitation is to regularly audit and update training data to ensure it remains representative of the current NBA landscape. Techniques such as data augmentation can ensure diversity in the data set. Another limitation is some factors influencing a player's ability to make a shot (e.g., mental health, injuries, playing different position than usual) is not captured by the data.
+One limitation associated with using this model is that there may be sampling or historical biases in the training data, which can lead to inaccurate predictions. A way to mitigate this limitation is to regularly audit and update training data to ensure it remains representative of the current NBA landscape. Techniques such as data augmentation can ensure diversity in the data set. Another limitation is some factors influencing a player's ability to make a shot (e.g., mental health, injuries, playing different position than usual) is not captured by the data.
 
-The second limitation presents an interesting situation in which we can further increase the effectiveness of this model. In the future, we would like to incorporate data points (e.g., injuries, mental health of players) that could provide more accurate predictions. Additionally, we can incorporate more models [EXPAND ON THIS].
+The next steps in the process would be create a usable tool for a coach. In our presentation, we ran through an example calculation that our model created for the starting lineup of the Los Angeles Lakers. We took a hypothetical shot situations, ran the models we created, and output the player that would be most likely to make the shot. However, the method we used to do this was not scalable as we had to format our data and code in a specific way (i.e. reclean the data and reformat the data) so that it would run with the different models. Partially to blame for this is how the code is strucutred, and if we were to create functions insteead for the different processes, our model could be scalable for the situation described. Another next step is to use more historical data beyond the 2022 Season to make predictions. This could be very helpful for Veteran Players who have been in the league for many years. 
